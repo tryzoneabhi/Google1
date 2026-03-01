@@ -750,10 +750,13 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setUser(session.user);
+        const role = session.user.email?.toLowerCase() === '1singhsanskar11@gmail.com' ? 'admin' : 'user';
+        setUserRole(role);
         fetchProfile(session.user.id);
       } else {
         setUser(null);
         setUserRole('user');
+        setViewMode('web');
       }
     });
 
@@ -764,25 +767,26 @@ export default function App() {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('role, email')
+        .select('role')
         .eq('id', userId)
         .single();
       
       const { data: session } = await supabase.auth.getSession();
-      const currentUserEmail = session.session?.user?.email?.toLowerCase();
-      const isAdminEmail = currentUserEmail === '1singhsanskar11@gmail.com';
+      const email = session.session?.user?.email?.toLowerCase();
+      const isAdmin = email === '1singhsanskar11@gmail.com';
 
       if (profile) {
-        // Force admin role if email matches, even if DB says otherwise
-        if (isAdminEmail && profile.role !== 'admin') {
-          await supabase.from('profiles').update({ role: 'admin' }).eq('id', userId);
+        if (isAdmin) {
           setUserRole('admin');
+          if (profile.role !== 'admin') {
+            await supabase.from('profiles').update({ role: 'admin' }).eq('id', userId);
+          }
         } else {
           setUserRole(profile.role);
         }
       } else if (error && error.code === 'PGRST116') {
         if (session.session?.user) {
-          const role = isAdminEmail ? 'admin' : 'user';
+          const role = isAdmin ? 'admin' : 'user';
           await supabase.from('profiles').insert({
             id: userId,
             email: session.session.user.email,
