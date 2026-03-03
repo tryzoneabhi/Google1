@@ -36,42 +36,71 @@ import { supabase } from './services/supabaseClient';
 // --- Components ---
 
 const Navbar = ({ onAdminClick, isAdmin, user, onLogout, onStartChat }: { onAdminClick: () => void, isAdmin: boolean, user: any, onLogout: () => void, onStartChat: () => void }) => (
-  <nav className="fixed top-0 w-full z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center">
-    <div className="text-2xl font-display font-bold text-accent">WEBORA</div>
-    <div className="hidden md:flex gap-8 text-sm font-medium">
-      <a href="#home" className="hover:text-accent transition-colors">Home</a>
-      <a href="#services" className="hover:text-accent transition-colors">Plans</a>
-      <a href="#projects" className="hover:text-accent transition-colors">Projects</a>
-      <a href="#about" className="hover:text-accent transition-colors">About</a>
-    </div>
-    <div className="flex gap-4 items-center">
-      {user ? (
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={onAdminClick}
-            className={`p-2 rounded-full transition-colors ${isAdmin ? 'text-accent hover:bg-accent/10' : 'text-gray-400 hover:bg-white/10'}`}
-            title={isAdmin ? "Account Menu" : "User Profile"}
-          >
-            <User size={20} />
-          </button>
-        </div>
-      ) : (
-        <button 
-          onClick={onAdminClick}
-          className="p-2 text-gray-400 hover:text-accent transition-colors"
-          title="Login"
-        >
-          <LogIn size={20} />
-        </button>
-      )}
-      <button 
-        onClick={onStartChat}
-        className="bg-accent text-black px-5 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform"
+  <motion.nav 
+    initial={{ y: -100 }}
+    animate={{ y: 0 }}
+    className="fixed top-0 left-0 right-0 z-50 px-6 py-6"
+  >
+    <div className="max-w-7xl mx-auto glass rounded-[2rem] px-8 py-4 flex justify-between items-center border border-white/10 shadow-2xl backdrop-blur-2xl">
+      <motion.div 
+        whileHover={{ scale: 1.05 }}
+        className="text-2xl font-display font-black tracking-tighter text-accent cursor-pointer flex items-center gap-2"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       >
-        Get Started
-      </button>
+        <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+          <div className="w-4 h-4 bg-black rounded-sm rotate-45" />
+        </div>
+        WEBORA
+      </motion.div>
+      
+      <div className="hidden md:flex items-center gap-10">
+        {['Home', 'Services', 'Projects', 'About'].map((item) => (
+          <button 
+            key={item}
+            onClick={() => document.getElementById(item.toLowerCase())?.scrollIntoView({ behavior: 'smooth' })}
+            className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-accent transition-all relative group"
+          >
+            {item}
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-accent transition-all group-hover:w-full" />
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <motion.button 
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={onStartChat}
+          className="p-3 glass rounded-2xl text-accent hover:bg-accent hover:text-black transition-all border border-white/5"
+        >
+          <MessageSquare size={20} />
+        </motion.button>
+        
+        {user ? (
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onAdminClick}
+            className="flex items-center gap-3 glass px-5 py-2.5 rounded-2xl border border-accent/20 hover:border-accent/50 transition-all"
+          >
+            <div className="w-8 h-8 bg-accent/10 rounded-xl flex items-center justify-center border border-accent/20">
+              <User size={16} className="text-accent" />
+            </div>
+            <span className="text-xs font-black uppercase tracking-widest hidden sm:inline">Account</span>
+          </motion.button>
+        ) : (
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onAdminClick}
+            className="bg-accent text-black px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-accent/20 hover:shadow-accent/40 transition-all"
+          >
+            Sign In
+          </motion.button>
+        )}
+      </div>
     </div>
-  </nav>
+  </motion.nav>
 );
 
 const Hero = ({ onStartChat, settings }: { onStartChat: () => void, settings: Setting[] }) => {
@@ -90,32 +119,87 @@ const Hero = ({ onStartChat, settings }: { onStartChat: () => void, settings: Se
   };
 
   return (
-    <section id="home" className="pt-32 pb-20 px-6 min-h-screen flex flex-col items-center justify-center text-center">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
+    <section id="home" className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+      {/* Dynamic Background Elements */}
+      <div className="absolute inset-0 z-0">
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.1, 0.2, 0.1],
+            rotate: [0, 90, 0]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-accent/20 blur-[150px] rounded-full"
+        />
+        <motion.div 
+          animate={{ 
+            scale: [1, 1.3, 1],
+            opacity: [0.05, 0.15, 0.05],
+            rotate: [0, -45, 0]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+          className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-blue-500/10 blur-[150px] rounded-full"
+        />
+      </div>
+      
+      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full glass border border-white/10 text-accent text-[10px] font-black uppercase tracking-[0.3em] mb-10 shadow-xl"
+          >
+            <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+            Innovating Digital Excellence
+          </motion.div>
+          
+          <h1 className="text-6xl md:text-8xl lg:text-9xl font-display font-black mb-10 leading-[0.85] tracking-tighter">
+            {renderTitle(title)}
+          </h1>
+          
+          <p className="text-gray-400 text-lg md:text-2xl max-w-3xl mx-auto mb-14 leading-relaxed font-medium">
+            {subtitle}
+          </p>
+          
+          <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
+            <motion.button 
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-12 py-6 bg-accent text-black font-black rounded-2xl shadow-[0_20px_50px_rgba(0,255,136,0.3)] hover:shadow-[0_30px_60px_rgba(0,255,136,0.5)] transition-all text-xl uppercase tracking-widest relative overflow-hidden group"
+            >
+              <span className="relative z-10">Get Started</span>
+              <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
+            </motion.button>
+            <motion.button 
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onStartChat}
+              className="px-12 py-6 glass border border-white/10 rounded-2xl font-black hover:bg-white/10 transition-all text-xl uppercase tracking-widest flex items-center gap-4 group"
+            >
+              <MessageSquare size={24} className="text-accent group-hover:scale-110 transition-transform" /> Contact Us
+            </motion.button>
+          </div>
+        </motion.div>
+      </div>
+      
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5, duration: 1 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3"
       >
-        <h1 className="text-5xl md:text-7xl lg:text-8xl mb-6 leading-tight max-w-5xl mx-auto text-accent">
-          {renderTitle(title)}
-        </h1>
-        <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-          {subtitle}
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button 
-            onClick={onStartChat}
-            className="bg-accent text-black px-8 py-4 rounded-full font-bold text-lg hover:shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all"
-          >
-            Get Started
-          </button>
-          <button 
-            onClick={onStartChat}
-            className="glass px-8 py-4 rounded-full font-bold text-lg hover:bg-white/10 transition-all"
-          >
-            Contact Us
-          </button>
-        </div>
+        <div className="text-[10px] uppercase font-black tracking-[0.4em] text-gray-500">Explore</div>
+        <motion.div 
+          animate={{ y: [0, 15, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-px h-16 bg-gradient-to-b from-accent via-accent/50 to-transparent"
+        />
       </motion.div>
     </section>
   );
@@ -339,84 +423,121 @@ const OwnerChatPage = ({ user, onClose }: { user: any, onClose: () => void }) =>
   };
 
   return (
-    <div className="fixed inset-0 z-[150] bg-black/95 backdrop-blur-xl flex items-center justify-center p-0 md:p-6">
+    <div className="fixed inset-0 z-[150] bg-black/98 backdrop-blur-3xl flex items-center justify-center p-0 md:p-6 overflow-hidden">
+      {/* Background Glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-accent/5 blur-[150px] rounded-full" />
+      </div>
+
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass w-full max-w-4xl h-full md:h-[85vh] rounded-none md:rounded-3xl flex flex-col overflow-hidden shadow-2xl border-white/10"
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="relative glass w-full max-w-5xl h-full md:h-[85vh] rounded-none md:rounded-[3rem] flex flex-col overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.6)] border border-white/10"
       >
-        <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center border border-accent/50">
-              <User size={24} className="text-accent" />
-            </div>
+        <div className="p-6 md:p-8 border-b border-white/10 flex justify-between items-center bg-white/5 backdrop-blur-xl">
+          <div className="flex items-center gap-5">
+            <motion.div 
+              whileHover={{ rotate: 15, scale: 1.1 }}
+              className="w-14 h-14 bg-accent/10 rounded-2xl flex items-center justify-center border border-accent/20 shadow-inner"
+            >
+              <User size={28} className="text-accent" />
+            </motion.div>
             <div>
-              <h2 className="text-xl font-bold">Message with Owner</h2>
-              <div className="text-xs text-gray-400">
+              <h2 className="text-2xl font-display font-bold tracking-tight">Direct Support</h2>
+              <div className="text-[10px] uppercase font-black tracking-widest text-gray-500 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                 {user ? (
-                  <>Identified as: <span className="text-accent">{user.email}</span></>
+                  <>Logged in as <span className="text-accent">{user.email}</span></>
                 ) : (
-                  <span className="text-gray-500 italic">Login to see your messages</span>
+                  <span>Guest Mode</span>
                 )}
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
+          <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-all hover:scale-110"><X size={28} /></button>
         </div>
         
-        <div ref={scrollRef} className="flex-grow p-6 overflow-y-auto space-y-6 scrollbar-hide bg-black/20">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] md:max-w-[70%] p-4 rounded-2xl text-sm md:text-base shadow-lg transition-all hover:scale-[1.01] ${
-                m.role === 'user' ? 'bg-accent text-black font-medium' : 'bg-white/10 text-white border border-white/5'
-              }`}>
-                {m.text}
-                {m.created_at && (
-                  <div className={`text-[10px] mt-1 opacity-50 ${m.role === 'user' ? 'text-black' : 'text-gray-400'}`}>
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+        <div ref={scrollRef} className="flex-grow p-6 md:p-10 overflow-y-auto space-y-8 scrollbar-hide bg-black/10">
+          <AnimatePresence initial={false}>
+            {messages.map((m, i) => (
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, x: m.role === 'user' ? 20 : -20, y: 10 }}
+                animate={{ opacity: 1, x: 0, y: 0 }}
+                className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[85%] md:max-w-[70%] p-5 rounded-[2rem] text-sm md:text-base shadow-2xl relative group ${
+                  m.role === 'user' 
+                    ? 'bg-accent text-black font-bold rounded-tr-none' 
+                    : 'bg-white/10 text-white border border-white/5 rounded-tl-none backdrop-blur-md'
+                }`}>
+                  {m.text}
+                  {m.created_at && (
+                    <div className={`text-[9px] mt-2 font-black uppercase tracking-widest opacity-40 ${m.role === 'user' ? 'text-black' : 'text-gray-400'}`}>
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                  
+                  {/* Decorative corner */}
+                  <div className={`absolute top-0 w-4 h-4 ${m.role === 'user' ? '-right-2 bg-accent' : '-left-2 bg-white/10 border-l border-t border-white/5'} clip-path-triangle`} style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }} />
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          
           {loading && (
-            <div className="flex justify-end">
-              <div className="bg-accent/20 p-3 rounded-2xl flex gap-1">
-                <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-end"
+            >
+              <div className="bg-accent/10 p-4 rounded-2xl flex gap-1.5 border border-accent/20">
+                <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
-            </div>
+            </motion.div>
           )}
+          
           {!user && (
-            <div className="text-center py-10 opacity-50">
-              <p className="text-sm">You are viewing the chat as a guest.</p>
-              <p className="text-xs">Sign in to view your previous conversations and send new messages.</p>
+            <div className="text-center py-12 glass rounded-3xl border border-dashed border-white/10">
+              <p className="text-gray-400 font-bold mb-2">Guest Session</p>
+              <p className="text-xs text-gray-600 uppercase tracking-widest">Sign in to sync your conversation history</p>
             </div>
           )}
         </div>
         
-        <div className="p-6 border-t border-white/10 bg-white/5">
+        <div className="p-6 md:p-10 border-t border-white/10 bg-white/5 backdrop-blur-xl">
           {user ? (
             <div className="flex gap-4">
-              <input 
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Type your message to the owner..."
-                className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-base focus:outline-none focus:ring-2 focus:ring-accent transition-all"
-              />
-              <button onClick={handleSend} className="px-6 bg-accent text-black rounded-2xl font-bold hover:scale-105 transition-transform flex items-center gap-2">
-                <Send size={20} /> <span className="hidden md:inline">Send</span>
-              </button>
+              <div className="relative flex-grow group">
+                <input 
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Ask the owner anything..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-8 py-5 text-base focus:outline-none focus:ring-2 focus:ring-accent/50 focus:bg-white/10 transition-all placeholder:text-gray-600"
+                />
+                <div className="absolute inset-0 rounded-2xl border border-accent/0 group-focus-within:border-accent/20 pointer-events-none transition-all" />
+              </div>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSend} 
+                className="px-8 bg-accent text-black rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-accent/20 hover:shadow-accent/40 transition-all flex items-center gap-3"
+              >
+                <Send size={22} /> <span className="hidden md:inline">Send</span>
+              </motion.button>
             </div>
           ) : (
-            <button 
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => { document.dispatchEvent(new CustomEvent('open-login')); }}
-              className="w-full py-4 bg-accent text-black font-bold rounded-2xl hover:scale-[1.01] transition-transform flex items-center justify-center gap-2"
+              className="w-full py-5 bg-accent text-black font-black rounded-2xl shadow-xl shadow-accent/20 hover:shadow-accent/40 transition-all flex items-center justify-center gap-3 uppercase tracking-widest"
             >
-              <LogIn size={20} /> Sign In to Message Owner
-            </button>
+              <LogIn size={22} /> Sign In to Message Owner
+            </motion.button>
           )}
         </div>
       </motion.div>
@@ -431,7 +552,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   const [activeTab, setActiveTab] = useState<'projects' | 'services' | 'settings' | 'messages' | 'admins'>('projects');
   const [showAddProject, setShowAddProject] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [newProject, setNewProject] = useState({ title: '', description: '', image: '', category: '', link: '' });
+  const [newProject, setNewProject] = useState({ title: '', description: '', image: '', category: '', link: '', plan: '' });
   const [isUploading, setIsUploading] = useState(false);
 
   const [admins, setAdmins] = useState<any[]>([]);
@@ -510,6 +631,42 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   const [newSetting, setNewSetting] = useState({ key: '', value: '' });
   const [showAddSetting, setShowAddSetting] = useState(false);
   
+  const [longPressTimeout, setLongPressTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [chatToRename, setChatToRename] = useState<{email: string, alias: string} | null>(null);
+
+  const startLongPress = (email: string) => {
+    const timeout = setTimeout(() => {
+      setChatToDelete(email);
+    }, 2000);
+    setLongPressTimeout(timeout);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimeout) {
+      clearTimeout(longPressTimeout);
+      setLongPressTimeout(null);
+    }
+  };
+
+  const deleteThread = async (email: string) => {
+    if (!confirm(`Are you sure you want to delete all messages from ${email}?`)) return;
+    await fetch(`/api/admin/threads/${email}`, { method: 'DELETE' });
+    setChatToDelete(null);
+    fetchChats();
+    if (selectedChat?.email === email) setSelectedChat(null);
+  };
+
+  const updateAlias = async (email: string, alias: string) => {
+    await fetch('/api/admin/threads/alias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, alias })
+    });
+    setChatToRename(null);
+    fetchChats();
+  };
+  
   useEffect(() => {
     if (activeTab === 'messages') {
       fetchChats();
@@ -583,7 +740,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProject)
     });
-    setNewProject({ title: '', description: '', image: '', category: '', link: '' });
+    setNewProject({ title: '', description: '', image: '', category: '', link: '', plan: '' });
     setShowAddProject(false);
     onUpdate();
   };
@@ -625,99 +782,121 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-0 md:p-6">
+    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-0 md:p-6 overflow-hidden">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="glass w-full max-w-5xl h-full md:h-[80vh] rounded-none md:rounded-3xl flex flex-col overflow-hidden"
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="glass w-full max-w-6xl h-full md:h-[85vh] rounded-none md:rounded-[2.5rem] flex flex-col overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10"
       >
-        <div className="p-4 md:p-6 border-b border-white/10 flex justify-between items-center">
-          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
-            <h2 className="text-xl md:text-2xl font-display">Admin Dashboard</h2>
-            <div className="flex bg-white/5 p-1 rounded-full w-fit">
+        <div className="p-5 md:p-8 border-b border-white/10 flex justify-between items-center bg-white/5 backdrop-blur-md">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center border border-accent/30">
+                <Settings className="text-accent" size={20} />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-display font-bold tracking-tight">Control Center</h2>
+            </div>
+            <div className="flex bg-black/40 p-1 rounded-2xl border border-white/5 backdrop-blur-xl">
               <button 
                 onClick={() => setViewMode('web')}
-                className={`px-3 md:px-4 py-1 rounded-full text-[10px] md:text-xs font-bold transition-all ${viewMode === 'web' ? 'bg-accent text-black' : 'text-gray-400'}`}
+                className={`px-5 py-2 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'web' ? 'bg-accent text-black shadow-lg shadow-accent/20' : 'text-gray-500 hover:text-white'}`}
               >
-                Web
+                Web View
               </button>
               <button 
                 onClick={() => setViewMode('control')}
-                className={`px-3 md:px-4 py-1 rounded-full text-[10px] md:text-xs font-bold transition-all ${viewMode === 'control' ? 'bg-accent text-black' : 'text-gray-400'}`}
+                className={`px-5 py-2 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'control' ? 'bg-accent text-black shadow-lg shadow-accent/20' : 'text-gray-500 hover:text-white'}`}
               >
-                Control
+                Admin Panel
               </button>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full"><X size={20} /></button>
+          <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-all hover:rotate-90 duration-300"><X size={24} /></button>
         </div>
         
         <div className="flex flex-col md:flex-row flex-grow overflow-hidden">
-          <div className="flex md:flex-col overflow-x-auto md:overflow-x-visible md:w-64 border-b md:border-b-0 md:border-r border-white/10 p-2 md:p-4 gap-2 scrollbar-hide">
-            <button 
-              onClick={() => setActiveTab('projects')}
-              className={`whitespace-nowrap md:w-full text-left px-4 py-2 md:py-3 rounded-xl transition-all text-sm md:text-base ${activeTab === 'projects' ? 'bg-accent text-black' : 'hover:bg-white/5'}`}
-            >
-              Projects
-            </button>
-            <button 
-              onClick={() => setActiveTab('services')}
-              className={`whitespace-nowrap md:w-full text-left px-4 py-2 md:py-3 rounded-xl transition-all text-sm md:text-base ${activeTab === 'services' ? 'bg-accent text-black' : 'hover:bg-white/5'}`}
-            >
-              Services
-            </button>
-            <button 
-              onClick={() => setActiveTab('messages')}
-              className={`whitespace-nowrap md:w-full text-left px-4 py-2 md:py-3 rounded-xl transition-all text-sm md:text-base ${activeTab === 'messages' ? 'bg-accent text-black' : 'hover:bg-white/5'}`}
-            >
-              Messages
-            </button>
-            <button 
-              onClick={() => setActiveTab('settings')}
-              className={`whitespace-nowrap md:w-full text-left px-4 py-2 md:py-3 rounded-xl transition-all text-sm md:text-base ${activeTab === 'settings' ? 'bg-accent text-black' : 'hover:bg-white/5'}`}
-            >
-              Settings
-            </button>
-            {user.is_super && (
+          <div className="flex md:flex-col overflow-x-auto md:overflow-x-visible md:w-72 border-b md:border-b-0 md:border-r border-white/10 p-3 md:p-6 gap-3 scrollbar-hide bg-black/20">
+            {[
+              { id: 'projects', label: 'Projects', icon: <Layout size={18} /> },
+              { id: 'services', label: 'Services', icon: <Zap size={18} /> },
+              { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
+              { id: 'settings', label: 'Settings', icon: <Sliders size={18} /> },
+              { id: 'admins', label: 'Admins', icon: <Shield size={18} />, superOnly: true }
+            ].filter(tab => !tab.superOnly || user.is_super).map(tab => (
               <button 
-                onClick={() => setActiveTab('admins')}
-                className={`whitespace-nowrap md:w-full text-left px-4 py-2 md:py-3 rounded-xl transition-all text-sm md:text-base ${activeTab === 'admins' ? 'bg-accent text-black' : 'hover:bg-white/5'}`}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-4 whitespace-nowrap md:w-full text-left px-5 py-4 rounded-2xl transition-all group ${activeTab === tab.id ? 'bg-accent text-black font-black shadow-xl shadow-accent/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
               >
-                Admins
+                <span className={`${activeTab === tab.id ? 'text-black' : 'text-accent group-hover:scale-110 transition-transform'}`}>{tab.icon}</span>
+                <span className="text-sm uppercase tracking-widest font-bold">{tab.label}</span>
               </button>
-            )}
+            ))}
+            
+            <div className="mt-auto hidden md:block p-4 bg-white/5 rounded-2xl border border-white/5">
+              <div className="text-[10px] uppercase font-black text-gray-500 tracking-widest mb-2">Active Session</div>
+              <div className="text-xs font-bold truncate text-accent">{user.email}</div>
+            </div>
           </div>
           
-          <div className="flex-grow p-4 md:p-8 overflow-y-auto">
-            {activeTab === 'messages' && (
+          <div className="flex-grow p-5 md:p-10 overflow-y-auto bg-black/10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="h-full"
+              >
+                {activeTab === 'messages' && (
               <div className="flex flex-col md:flex-row h-full gap-6">
                 <div className={`w-full md:w-1/3 md:border-r border-white/10 md:pr-6 space-y-4 ${selectedChat ? 'hidden md:block' : 'block'}`}>
                   <h3 className="text-lg md:text-xl mb-4">User Chats</h3>
                   <div className="space-y-3">
                     {chats.map(chat => (
-                      <button 
-                        key={chat.id}
-                        onClick={() => {
-                          setSelectedChat(chat);
-                          fetchChatMessages(chat.email);
-                        }}
-                        className={`w-full text-left p-4 rounded-2xl transition-all ${selectedChat?.email === chat.email ? 'bg-accent/20 border border-accent/50' : 'glass hover:bg-white/5'}`}
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <div className="text-sm font-bold truncate max-w-[150px]">{chat.email}</div>
-                          <div className="text-[10px] text-gray-500">{new Date(chat.created_at).toLocaleDateString()}</div>
-                        </div>
-                        <div className="text-[11px] text-gray-400 line-clamp-1 mb-1">{chat.message}</div>
-                        {chat.reply ? (
-                          <div className="text-[9px] text-accent flex items-center gap-1">
-                            <div className="w-1 h-1 bg-accent rounded-full"></div> Replied
+                      <div key={chat.id} className="relative group/item">
+                        <button 
+                          onMouseDown={() => startLongPress(chat.email)}
+                          onMouseUp={cancelLongPress}
+                          onMouseLeave={cancelLongPress}
+                          onTouchStart={() => startLongPress(chat.email)}
+                          onTouchEnd={cancelLongPress}
+                          onClick={() => {
+                            setSelectedChat(chat);
+                            fetchChatMessages(chat.email);
+                          }}
+                          className={`w-full text-left p-4 rounded-2xl transition-all ${selectedChat?.email === chat.email ? 'bg-accent/20 border border-accent/50' : 'glass hover:bg-white/5'}`}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <div className="flex flex-col max-w-[150px]">
+                              <div className="text-sm font-bold truncate text-accent">{chat.alias || 'User'}</div>
+                              <div className="text-[10px] text-gray-500 truncate">{chat.email}</div>
+                            </div>
+                            <div className="text-[10px] text-gray-500">{new Date(chat.created_at).toLocaleDateString()}</div>
                           </div>
-                        ) : (
-                          <div className="text-[9px] text-orange-400 flex items-center gap-1">
-                            <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse"></div> New Message
-                          </div>
-                        )}
-                      </button>
+                          <div className="text-[11px] text-gray-400 line-clamp-1 mb-1">{chat.message}</div>
+                          {chat.reply ? (
+                            <div className="text-[9px] text-accent flex items-center gap-1">
+                              <div className="w-1 h-1 bg-accent rounded-full"></div> Replied
+                            </div>
+                          ) : (
+                            <div className="text-[9px] text-orange-400 flex items-center gap-1">
+                              <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse"></div> New Message
+                            </div>
+                          )}
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setChatToRename({ email: chat.email, alias: chat.alias || '' });
+                          }}
+                          className="absolute top-2 right-2 p-1.5 glass rounded-lg opacity-0 group-hover/item:opacity-100 transition-opacity text-accent"
+                          title="Rename User"
+                        >
+                          <Edit size={12} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -830,6 +1009,19 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm"
                         />
                       </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-400 uppercase ml-1">Service Plan</label>
+                        <select 
+                          value={newProject.plan}
+                          onChange={e => setNewProject({...newProject, plan: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                        >
+                          <option value="">Select Plan</option>
+                          <option value="Elite">Elite</option>
+                          <option value="Pro">Pro</option>
+                          <option value="Premium">Premium</option>
+                        </select>
+                      </div>
                     </div>
                     <textarea 
                       placeholder="Description"
@@ -851,7 +1043,12 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                     <div key={p.id} className="glass p-4 rounded-2xl flex justify-between items-center">
                       <div>
                         <div className="font-bold">{p.title}</div>
-                        <div className="text-xs text-gray-400">{p.category}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-400 uppercase">{p.category}</span>
+                          {p.plan && (
+                            <span className="text-[10px] text-accent uppercase font-bold px-1.5 py-0.5 bg-accent/10 rounded border border-accent/20">{p.plan}</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button 
@@ -901,6 +1098,19 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                         onChange={e => setEditingProject({...editingProject, link: e.target.value})}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm"
                       />
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-400 uppercase ml-1">Service Plan</label>
+                        <select 
+                          value={editingProject.plan || ''}
+                          onChange={e => setEditingProject({...editingProject, plan: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                        >
+                          <option value="">Select Plan</option>
+                          <option value="Elite">Elite</option>
+                          <option value="Pro">Pro</option>
+                          <option value="Premium">Premium</option>
+                        </select>
+                      </div>
                       <textarea 
                         placeholder="Description"
                         value={editingProject.description}
@@ -974,6 +1184,48 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Delete Chat Modal */}
+            {chatToDelete && (
+              <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-6">
+                <div className="glass p-8 rounded-3xl max-w-sm w-full text-center space-y-6">
+                  <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                    <Trash2 size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Delete Chat?</h3>
+                    <p className="text-gray-400 text-sm">This will permanently remove all messages from {chatToDelete}.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => setChatToDelete(null)} className="flex-grow py-3 glass rounded-xl font-bold">Cancel</button>
+                    <button onClick={() => deleteThread(chatToDelete)} className="flex-grow py-3 bg-red-500 text-white rounded-xl font-bold">Delete</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Rename Chat Modal */}
+            {chatToRename && (
+              <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-6">
+                <div className="glass p-8 rounded-3xl max-w-sm w-full space-y-6">
+                  <h3 className="text-xl font-bold">Rename User</h3>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400 uppercase ml-1">Custom Name (Owner Only)</label>
+                    <input 
+                      value={chatToRename.alias}
+                      onChange={e => setChatToRename({...chatToRename, alias: e.target.value})}
+                      placeholder="Enter name..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => setChatToRename(null)} className="flex-grow py-3 glass rounded-xl font-bold">Cancel</button>
+                    <button onClick={() => updateAlias(chatToRename.email, chatToRename.alias)} className="flex-grow py-3 bg-accent text-black rounded-xl font-bold">Save</button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1430,15 +1682,31 @@ export default function App() {
           <Hero onStartChat={() => setShowOwnerChat(true)} settings={data.settings} />
 
           {/* Services Section */}
-          <section id="services" className="py-20 px-6 max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl mb-4">Our Services</h2>
-              <p className="text-gray-400">Choose the perfect plan for your digital presence.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {data.services.map((s: Service) => (
-                <ServiceCard key={s.id} service={s} onChoosePlan={() => setShowOwnerChat(true)} />
-              ))}
+          <section id="services" className="py-32 px-6 relative overflow-hidden">
+            <div className="max-w-7xl mx-auto">
+              <motion.div 
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-center mb-24"
+              >
+                <h2 className="text-5xl md:text-7xl font-display font-black mb-6 tracking-tight">Our Expertise</h2>
+                <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto">Choose the perfect plan for your digital presence.</p>
+                <div className="w-24 h-1.5 bg-accent mx-auto rounded-full mt-8" />
+              </motion.div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                {data.services.map((s: Service, idx: number) => (
+                  <motion.div
+                    key={s.id}
+                    initial={{ opacity: 0, y: 50 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1 }}
+                  >
+                    <ServiceCard service={s} onChoosePlan={() => setShowOwnerChat(true)} />
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </section>
 
@@ -1450,12 +1718,12 @@ export default function App() {
                   <h2 className="text-4xl md:text-5xl mb-4">Selected Work</h2>
                   <p className="text-gray-400">Industry-level projects crafted with precision.</p>
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+                <div className="flex gap-3 overflow-x-auto pb-4 md:pb-0 scrollbar-hide">
                   {['All', ...new Set(data.projects.map(p => p.category))].map(cat => (
                     <button
                       key={cat}
                       onClick={() => setFilter(cat)}
-                      className={`px-4 py-2 rounded-full text-sm transition-all ${filter === cat ? 'bg-accent text-black font-bold' : 'glass hover:bg-white/10'}`}
+                      className={`px-6 py-2.5 rounded-2xl text-sm font-medium transition-all whitespace-nowrap ${filter === cat ? 'bg-accent text-black shadow-lg shadow-accent/20' : 'glass text-gray-400 hover:text-white hover:bg-white/10'}`}
                     >
                       {cat}
                     </button>
@@ -1473,36 +1741,48 @@ export default function App() {
                     .map((p: Project) => (
                     <motion.div 
                       key={p.id}
-                      whileHover={{ scale: 1.02 }}
-                      onClick={() => {
-                        if (p.link) {
-                          window.open(p.link, '_blank');
-                        } else {
-                          setSelectedProject(p);
-                        }
-                      }}
-                      className="group relative aspect-video rounded-3xl overflow-hidden glass cursor-pointer border border-white/5 hover:border-accent/50 transition-all"
+                      whileHover={{ y: -10 }}
+                      className="group relative aspect-video rounded-3xl overflow-hidden glass border border-white/5 hover:border-accent/50 transition-all shadow-2xl"
                     >
                       <img 
                         src={p.image ? (p.image.startsWith('http') ? p.image : p.image) : "https://picsum.photos/seed/webora-project/1200/800?blur=2"} 
                         alt={p.title} 
-                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" 
+                        className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
                         referrerPolicy="no-referrer" 
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = "https://picsum.photos/seed/webora-fallback/1200/800?blur=2";
                         }}
                       />
-                      <div className="absolute inset-0 p-6 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+                      
+                      {/* Overlay with options */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                        {p.link && (
+                          <button 
+                            onClick={() => window.open(p.link, '_blank')}
+                            className="bg-accent text-black px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:scale-105 transition-transform"
+                          >
+                            <Globe size={16} /> Go to Web
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => setSelectedProject(p)}
+                          className="bg-white/10 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-white/20 transition-all"
+                        >
+                          Details
+                        </button>
+                      </div>
+
+                      <div className="absolute inset-0 p-6 flex flex-col justify-end bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none group-hover:opacity-0 transition-opacity">
                         <div className="flex justify-between items-end">
                           <div>
-                            <div className="text-xs text-accent font-bold uppercase mb-1">{p.category}</div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] text-accent font-bold uppercase tracking-wider bg-accent/10 px-2 py-0.5 rounded-md border border-accent/20">{p.category}</span>
+                              {p.plan && (
+                                <span className="text-[10px] text-white/50 font-bold uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded-md border border-white/10">{p.plan}</span>
+                              )}
+                            </div>
                             <h3 className="text-xl font-bold">{p.title}</h3>
                           </div>
-                          {p.link && (
-                            <div className="p-2 bg-accent text-black rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                              <ExternalLink size={16} />
-                            </div>
-                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -1567,7 +1847,12 @@ export default function App() {
               </button>
             </div>
             <div className="p-8 overflow-y-auto">
-              <div className="text-accent font-bold uppercase text-sm mb-2">{selectedProject.category}</div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="text-accent font-bold uppercase text-xs bg-accent/10 px-3 py-1 rounded-full border border-accent/20">{selectedProject.category}</div>
+                {selectedProject.plan && (
+                  <div className="text-white/50 font-bold uppercase text-xs bg-white/5 px-3 py-1 rounded-full border border-white/10">{selectedProject.plan} Plan</div>
+                )}
+              </div>
               <h2 className="text-3xl font-display mb-4">{selectedProject.title}</h2>
               <p className="text-gray-400 text-lg mb-8">{selectedProject.description}</p>
               <div className="flex gap-4">
@@ -1653,100 +1938,149 @@ export default function App() {
 
       {/* Login Modal */}
       {showLogin && (
-        <div className="fixed inset-0 z-[110] bg-black/95 flex items-center justify-center p-6 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[110] bg-black/98 flex items-center justify-center p-6 backdrop-blur-md overflow-hidden">
+          {/* Animated Background Elements */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.2, 1],
+                opacity: [0.1, 0.2, 0.1],
+                rotate: [0, 90, 0]
+              }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-accent/20 blur-[120px] rounded-full"
+            />
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.3, 1],
+                opacity: [0.05, 0.15, 0.05],
+                rotate: [0, -90, 0]
+              }}
+              transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+              className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-blue-500/10 blur-[100px] rounded-full"
+            />
+          </div>
+
           <motion.div 
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 40, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            className="glass p-8 md:p-10 rounded-[2rem] w-full max-w-md border border-white/10 shadow-2xl"
+            exit={{ opacity: 0, y: 40, scale: 0.9 }}
+            className="relative glass p-8 md:p-12 rounded-[2.5rem] w-full max-w-md border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
           >
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-accent/10 rounded-2xl mx-auto mb-4 flex items-center justify-center border border-accent/20">
-                <LogIn className="text-accent" size={32} />
-              </div>
-              <h2 className="text-3xl font-display font-bold mb-2">
+            {/* Decorative line */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
+
+            <div className="text-center mb-10">
+              <motion.div 
+                initial={{ rotate: -10, scale: 0.8 }}
+                animate={{ rotate: 0, scale: 1 }}
+                transition={{ type: "spring", damping: 12 }}
+                className="w-20 h-20 bg-accent/10 rounded-3xl mx-auto mb-6 flex items-center justify-center border border-accent/20 shadow-inner group"
+              >
+                <LogIn className="text-accent group-hover:scale-110 transition-transform duration-500" size={40} />
+              </motion.div>
+              <h2 className="text-4xl font-display font-bold mb-3 tracking-tight">
                 {isSignUp ? 'Join Webora' : 'Welcome Back'}
               </h2>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-400 text-sm leading-relaxed">
                 {isSignUp ? 'Create an account to start your project' : 'Login to manage your services and chats'}
               </p>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-6">
               {authError && (
                 <motion.div 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm font-medium text-center"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm font-medium text-center flex items-center justify-center gap-2"
                 >
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
                   {authError}
                 </motion.div>
               )}
+              
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Email Address</label>
-                <input 
-                  type="email" 
-                  placeholder="name@example.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  disabled={authLoading}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:border-accent focus:bg-white/10 transition-all text-white"
-                />
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Email Address</label>
+                <div className="relative group">
+                  <input 
+                    type="email" 
+                    placeholder="name@example.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    disabled={authLoading}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-accent/50 focus:bg-white/10 transition-all text-white placeholder:text-gray-600"
+                  />
+                  <div className="absolute inset-0 rounded-2xl border border-accent/0 group-focus-within:border-accent/30 pointer-events-none transition-all" />
+                </div>
               </div>
+
               <div className="space-y-2">
-                <div className="flex justify-between items-center ml-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase">Password</label>
+                <div className="flex justify-between items-center ml-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Password</label>
                   {!isSignUp && (
-                    <button className="text-[10px] text-accent hover:underline font-bold uppercase">Forgot?</button>
+                    <button className="text-[10px] text-accent hover:text-white transition-colors font-black uppercase tracking-tighter">Forgot Password?</button>
                   )}
                 </div>
-                <input 
-                  type="password" 
-                  placeholder="••••••••"
-                  value={loginPass}
-                  onChange={(e) => setLoginPass(e.target.value)}
-                  disabled={authLoading}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 outline-none focus:border-accent focus:bg-white/10 transition-all text-white"
-                />
+                <div className="relative group">
+                  <input 
+                    type="password" 
+                    placeholder="••••••••"
+                    value={loginPass}
+                    onChange={(e) => setLoginPass(e.target.value)}
+                    disabled={authLoading}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-accent/50 focus:bg-white/10 transition-all text-white placeholder:text-gray-600"
+                  />
+                  <div className="absolute inset-0 rounded-2xl border border-accent/0 group-focus-within:border-accent/30 pointer-events-none transition-all" />
+                </div>
               </div>
               
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleAuthAction}
                 disabled={authLoading}
-                className="w-full py-4 bg-accent text-black font-black rounded-2xl hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 text-lg"
+                className="w-full py-5 bg-accent text-black font-black rounded-2xl shadow-[0_10px_30px_rgba(0,255,136,0.2)] hover:shadow-[0_15px_40px_rgba(0,255,136,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 text-xl uppercase tracking-wider overflow-hidden relative group"
               >
-                {authLoading ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                    <span>Processing...</span>
-                  </div>
-                ) : (isSignUp ? 'Create Account' : 'Sign In')}
-              </button>
+                <span className="relative z-10">
+                  {authLoading ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="w-5 h-5 border-3 border-black/20 border-t-black rounded-full animate-spin" />
+                      <span>Authenticating...</span>
+                    </div>
+                  ) : (isSignUp ? 'Create Account' : 'Sign In')}
+                </span>
+                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
+              </motion.button>
 
-              <div className="relative py-4">
+              <div className="relative py-6">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
-                <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#0a0a0a] px-2 text-gray-500">Or</span></div>
+                <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-[#0a0a0a] px-4 text-gray-600">Secure Access</span></div>
               </div>
 
-              <div className="text-center">
+              <div className="text-center space-y-4">
                 <button 
                   onClick={() => {
                     setIsSignUp(!isSignUp);
                     setAuthError(null);
                   }}
                   disabled={authLoading}
-                  className="text-sm text-gray-400 hover:text-accent transition-colors font-medium"
+                  className="text-sm text-gray-400 hover:text-accent transition-all font-bold group"
                 >
-                  {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
+                  {isSignUp ? (
+                    <>Already have an account? <span className="text-accent group-hover:underline">Sign In</span></>
+                  ) : (
+                    <>Don't have an account? <span className="text-accent group-hover:underline">Create one</span></>
+                  )}
+                </button>
+                
+                <button 
+                  onClick={() => setShowLogin(false)}
+                  disabled={authLoading}
+                  className="block w-full text-gray-600 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors pt-2"
+                >
+                  Return to Home
                 </button>
               </div>
-              
-              <button 
-                onClick={() => setShowLogin(false)}
-                disabled={authLoading}
-                className="w-full text-gray-600 text-xs hover:text-white transition-colors mt-4"
-              >
-                Maybe later
-              </button>
             </div>
           </motion.div>
         </div>

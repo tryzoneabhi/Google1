@@ -5,6 +5,7 @@ export interface Project {
   image: string;
   category: string;
   link: string;
+  plan?: string;
 }
 
 export interface Service {

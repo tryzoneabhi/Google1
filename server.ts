@@ -39,7 +39,8 @@ db.exec(`
     description TEXT,
     image TEXT,
     category TEXT,
-    link TEXT
+    link TEXT,
+    plan TEXT
   );
   CREATE TABLE IF NOT EXISTS services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,6 +62,10 @@ db.exec(`
     email TEXT UNIQUE,
     password TEXT,
     is_super INTEGER DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS user_aliases (
+    email TEXT PRIMARY KEY,
+    alias TEXT
   );
 `);
 
@@ -131,16 +136,28 @@ async function startServer() {
 
   app.get("/api/admin/threads", (req, res) => {
     const threads = db.prepare(`
-      SELECT m1.* 
+      SELECT m1.*, ua.alias 
       FROM messages m1
       JOIN (
         SELECT email, MAX(created_at) as max_created
         FROM messages
         GROUP BY email
       ) m2 ON m1.email = m2.email AND m1.created_at = m2.max_created
+      LEFT JOIN user_aliases ua ON m1.email = ua.email
       ORDER BY m1.created_at DESC
     `).all();
     res.json(threads);
+  });
+
+  app.delete("/api/admin/threads/:email", (req, res) => {
+    db.prepare("DELETE FROM messages WHERE email = ?").run(req.params.email);
+    res.json({ success: true });
+  });
+
+  app.post("/api/admin/threads/alias", (req, res) => {
+    const { email, alias } = req.body;
+    db.prepare("INSERT OR REPLACE INTO user_aliases (email, alias) VALUES (?, ?)").run(email, alias);
+    res.json({ success: true });
   });
 
   app.get("/api/admin/messages/:email", (req, res) => {
@@ -161,15 +178,15 @@ async function startServer() {
   });
 
   app.post("/api/admin/projects", (req, res) => {
-    const { title, description, image, category, link } = req.body;
-    db.prepare("INSERT INTO projects (title, description, image, category, link) VALUES (?, ?, ?, ?, ?)").run(title, description, image, category, link);
+    const { title, description, image, category, link, plan } = req.body;
+    db.prepare("INSERT INTO projects (title, description, image, category, link, plan) VALUES (?, ?, ?, ?, ?, ?)").run(title, description, image, category, link, plan);
     res.json({ success: true });
   });
 
   app.put("/api/admin/projects/:id", (req, res) => {
-    const { title, description, image, category, link } = req.body;
-    db.prepare("UPDATE projects SET title = ?, description = ?, image = ?, category = ?, link = ? WHERE id = ?")
-      .run(title, description, image, category, link, req.params.id);
+    const { title, description, image, category, link, plan } = req.body;
+    db.prepare("UPDATE projects SET title = ?, description = ?, image = ?, category = ?, link = ?, plan = ? WHERE id = ?")
+      .run(title, description, image, category, link, plan, req.params.id);
     res.json({ success: true });
   });
 
