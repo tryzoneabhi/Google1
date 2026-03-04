@@ -101,6 +101,7 @@ if (servicesCount.count === 0) {
   insertService.run("Elite", "499", "1 Week Delivery, AI Integration, Database, Vercel Hosting", "elite");
   insertService.run("Pro", "599", "6 Days Delivery, Source Code, Elite Features, Custom Domain", "pro");
   insertService.run("Premium", "999", "5 Days Delivery, All Pro Features, 1 Year Maintenance, 10% Off", "premium");
+  insertService.run("Custom", "Contact", "Tailored Solutions, Enterprise Grade, Dedicated Support, Scalable Architecture", "custom");
 }
 
 async function startServer() {
@@ -150,6 +151,11 @@ async function startServer() {
   });
 
   app.delete("/api/admin/threads/:email", (req, res) => {
+    db.prepare("DELETE FROM messages WHERE email = ?").run(req.params.email);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/user/messages/:email", (req, res) => {
     db.prepare("DELETE FROM messages WHERE email = ?").run(req.params.email);
     res.json({ success: true });
   });

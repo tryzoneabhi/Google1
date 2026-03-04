@@ -205,31 +205,46 @@ const Hero = ({ onStartChat, settings }: { onStartChat: () => void, settings: Se
   );
 };
 
-const ServiceCard = ({ service, onChoosePlan }: { service: Service, onChoosePlan: () => void, key?: React.Key }) => (
+const ServiceCard = ({ service, onChoosePlan }: { service: Service, onChoosePlan: (planName: string) => void, key?: React.Key }) => (
   <motion.div 
-    whileHover={{ y: -10 }}
-    className="glass p-8 rounded-3xl flex flex-col h-full border-white/10 hover:border-accent/50 transition-all"
+    whileHover={{ y: -10, scale: 1.02 }}
+    whileTap={{ scale: 0.98 }}
+    className="glass p-8 rounded-[2.5rem] flex flex-col h-full border-white/10 hover:border-accent/50 transition-all group relative overflow-hidden"
   >
-    <div className="text-accent mb-4">
-      {service.tier === 'elite' && <Globe size={32} />}
-      {service.tier === 'pro' && <Code size={32} />}
-      {service.tier === 'premium' && <Zap size={32} />}
+    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+      {service.tier === 'elite' && <Globe size={120} />}
+      {service.tier === 'pro' && <Code size={120} />}
+      {service.tier === 'premium' && <Zap size={120} />}
+      {service.tier === 'custom' && <Settings size={120} />}
     </div>
-    <h3 className="text-2xl mb-2">{service.name}</h3>
-    <div className="text-4xl font-bold mb-6">₹{service.price}</div>
-    <ul className="space-y-3 mb-8 flex-grow">
+
+    <div className="text-accent mb-6 relative z-10">
+      {service.tier === 'elite' && <Globe size={40} className="drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]" />}
+      {service.tier === 'pro' && <Code size={40} className="drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]" />}
+      {service.tier === 'premium' && <Zap size={40} className="drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]" />}
+      {service.tier === 'custom' && <Settings size={40} className="drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]" />}
+    </div>
+    <h3 className="text-3xl font-display font-black mb-2 relative z-10">{service.name}</h3>
+    <div className="text-5xl font-black mb-8 relative z-10 flex items-baseline gap-1">
+      <span className="text-xl text-gray-500 font-medium">₹</span>
+      {service.price}
+    </div>
+    <ul className="space-y-4 mb-10 flex-grow relative z-10">
       {service.features.split(',').map((f, i) => (
-        <li key={i} className="flex items-center gap-2 text-gray-400 text-sm">
-          <ChevronRight size={14} className="text-accent" />
+        <li key={i} className="flex items-start gap-3 text-gray-400 text-sm leading-relaxed">
+          <div className="mt-1 w-4 h-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 border border-accent/20">
+            <ChevronRight size={10} className="text-accent" />
+          </div>
           {f.trim()}
         </li>
       ))}
     </ul>
     <button 
-      onClick={onChoosePlan}
-      className="w-full py-3 rounded-xl bg-white/5 hover:bg-accent hover:text-black font-bold transition-all"
+      onClick={() => onChoosePlan(service.name)}
+      className="w-full py-5 rounded-2xl bg-white/5 hover:bg-accent hover:text-black font-black uppercase tracking-widest text-xs transition-all shadow-xl hover:shadow-accent/20 relative z-10 group/btn overflow-hidden"
     >
-      Choose Plan
+      <span className="relative z-10">Choose {service.name}</span>
+      <div className="absolute inset-0 bg-white opacity-0 group-hover/btn:opacity-10 transition-opacity" />
     </button>
   </motion.div>
 );
@@ -360,11 +375,17 @@ const AIChatBot = ({ context, isOpen, setIsOpen }: { context: string, isOpen: bo
   );
 };
 
-const OwnerChatPage = ({ user, onClose }: { user: any, onClose: () => void }) => {
+const OwnerChatPage = ({ user, onClose, initialMessage }: { user: any, onClose: () => void, initialMessage?: string }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'admin', text: string, created_at?: string }[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialMessage || '');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (initialMessage) {
+      setInput(initialMessage);
+    }
+  }, [initialMessage]);
 
   const fetchMessages = async () => {
     if (!user?.email) return;
@@ -632,12 +653,12 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   const [showAddSetting, setShowAddSetting] = useState(false);
   
   const [longPressTimeout, setLongPressTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [chatOptions, setChatOptions] = useState<{email: string, alias: string} | null>(null);
   const [chatToRename, setChatToRename] = useState<{email: string, alias: string} | null>(null);
 
-  const startLongPress = (email: string) => {
+  const startLongPress = (email: string, alias: string) => {
     const timeout = setTimeout(() => {
-      setChatToDelete(email);
+      setChatOptions({ email, alias });
     }, 2000);
     setLongPressTimeout(timeout);
   };
@@ -651,10 +672,17 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
 
   const deleteThread = async (email: string) => {
     if (!confirm(`Are you sure you want to delete all messages from ${email}?`)) return;
-    await fetch(`/api/admin/threads/${email}`, { method: 'DELETE' });
-    setChatToDelete(null);
-    fetchChats();
-    if (selectedChat?.email === email) setSelectedChat(null);
+    try {
+      const res = await fetch(`/api/admin/threads/${email}`, { method: 'DELETE' });
+      if (res.ok) {
+        setChatOptions(null);
+        fetchChats();
+        if (selectedChat?.email === email) setSelectedChat(null);
+      }
+    } catch (err) {
+      console.error("Delete thread error:", err);
+      alert("Failed to delete thread");
+    }
   };
 
   const updateAlias = async (email: string, alias: string) => {
@@ -735,14 +763,28 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   };
 
   const addProject = async () => {
-    await fetch('/api/admin/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newProject)
-    });
-    setNewProject({ title: '', description: '', image: '', category: '', link: '', plan: '' });
-    setShowAddProject(false);
-    onUpdate();
+    if (!newProject.title || !newProject.category || !newProject.plan) {
+      alert("Please fill in Title, Category, and Plan");
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProject)
+      });
+      if (res.ok) {
+        setNewProject({ title: '', description: '', image: '', category: '', link: '', plan: '' });
+        setShowAddProject(false);
+        onUpdate();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to add project");
+      }
+    } catch (err) {
+      console.error("Add project error:", err);
+      alert("An error occurred while adding the project");
+    }
   };
 
   const updateProject = async () => {
@@ -820,16 +862,22 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
               { id: 'projects', label: 'Projects', icon: <Layout size={18} /> },
               { id: 'services', label: 'Services', icon: <Zap size={18} /> },
               { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-              { id: 'settings', label: 'Settings', icon: <Sliders size={18} /> },
+              { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
               { id: 'admins', label: 'Admins', icon: <Shield size={18} />, superOnly: true }
             ].filter(tab => !tab.superOnly || user.is_super).map(tab => (
               <button 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-4 whitespace-nowrap md:w-full text-left px-5 py-4 rounded-2xl transition-all group ${activeTab === tab.id ? 'bg-accent text-black font-black shadow-xl shadow-accent/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                className={`flex items-center gap-4 whitespace-nowrap md:w-full text-left px-5 py-4 rounded-2xl transition-all group relative overflow-hidden ${activeTab === tab.id ? 'text-black font-black shadow-xl shadow-accent/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
               >
-                <span className={`${activeTab === tab.id ? 'text-black' : 'text-accent group-hover:scale-110 transition-transform'}`}>{tab.icon}</span>
-                <span className="text-sm uppercase tracking-widest font-bold">{tab.label}</span>
+                {activeTab === tab.id && (
+                  <motion.div 
+                    layoutId="activeAdminTab"
+                    className="absolute inset-0 bg-accent rounded-2xl"
+                  />
+                )}
+                <span className={`relative z-10 ${activeTab === tab.id ? 'text-black' : 'text-accent group-hover:scale-110 transition-transform'}`}>{tab.icon}</span>
+                <span className="relative z-10 text-sm uppercase tracking-widest font-bold">{tab.label}</span>
               </button>
             ))}
             
@@ -857,10 +905,10 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                     {chats.map(chat => (
                       <div key={chat.id} className="relative group/item">
                         <button 
-                          onMouseDown={() => startLongPress(chat.email)}
+                          onMouseDown={() => startLongPress(chat.email, chat.alias || 'User')}
                           onMouseUp={cancelLongPress}
                           onMouseLeave={cancelLongPress}
-                          onTouchStart={() => startLongPress(chat.email)}
+                          onTouchStart={() => startLongPress(chat.email, chat.alias || 'User')}
                           onTouchEnd={cancelLongPress}
                           onClick={() => {
                             setSelectedChat(chat);
@@ -1020,6 +1068,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                           <option value="Elite">Elite</option>
                           <option value="Pro">Pro</option>
                           <option value="Premium">Premium</option>
+                          <option value="Custom">Custom</option>
                         </select>
                       </div>
                     </div>
@@ -1109,6 +1158,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                           <option value="Elite">Elite</option>
                           <option value="Pro">Pro</option>
                           <option value="Premium">Premium</option>
+                          <option value="Custom">Custom</option>
                         </select>
                       </div>
                       <textarea 
@@ -1132,12 +1182,12 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
             {activeTab === 'admins' && user.is_super && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-xl">Admin Management</h3>
+                  <h3 className="text-2xl font-display font-black tracking-tight">Admin Management</h3>
                   <button 
                     onClick={() => setShowAddAdmin(!showAddAdmin)}
-                    className="flex items-center gap-2 bg-accent text-black px-4 py-2 rounded-lg text-sm font-bold"
+                    className="flex items-center gap-2 bg-accent text-black px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg shadow-accent/20"
                   >
-                    <Plus size={16} /> {showAddAdmin ? 'Cancel' : 'Add Admin'}
+                    <Plus size={18} /> {showAddAdmin ? 'Cancel' : 'Add Admin'}
                   </button>
                 </div>
 
@@ -1188,47 +1238,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
               </div>
             )}
 
-            {/* Delete Chat Modal */}
-            {chatToDelete && (
-              <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-6">
-                <div className="glass p-8 rounded-3xl max-w-sm w-full text-center space-y-6">
-                  <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto">
-                    <Trash2 size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Delete Chat?</h3>
-                    <p className="text-gray-400 text-sm">This will permanently remove all messages from {chatToDelete}.</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => setChatToDelete(null)} className="flex-grow py-3 glass rounded-xl font-bold">Cancel</button>
-                    <button onClick={() => deleteThread(chatToDelete)} className="flex-grow py-3 bg-red-500 text-white rounded-xl font-bold">Delete</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Rename Chat Modal */}
-            {chatToRename && (
-              <div className="fixed inset-0 z-[300] bg-black/80 flex items-center justify-center p-6">
-                <div className="glass p-8 rounded-3xl max-w-sm w-full space-y-6">
-                  <h3 className="text-xl font-bold">Rename User</h3>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-400 uppercase ml-1">Custom Name (Owner Only)</label>
-                    <input 
-                      value={chatToRename.alias}
-                      onChange={e => setChatToRename({...chatToRename, alias: e.target.value})}
-                      placeholder="Enter name..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => setChatToRename(null)} className="flex-grow py-3 glass rounded-xl font-bold">Cancel</button>
-                    <button onClick={() => updateAlias(chatToRename.email, chatToRename.alias)} className="flex-grow py-3 bg-accent text-black rounded-xl font-bold">Save</button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Unified Chat Options Modal placeholder removed */}
 
             {activeTab === 'services' && (
               <div className="space-y-8">
@@ -1390,10 +1400,101 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                 </div>
               </div>
             )}
-          </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
+
+    {/* Unified Chat Options Modal */}
+    <AnimatePresence>
+      {chatOptions && (
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="glass w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10"
+          >
+            <div className="p-8 text-center border-b border-white/10 bg-white/5">
+              <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-accent/20">
+                <User size={32} className="text-accent" />
+              </div>
+              <div className="text-xl font-display font-black mb-1">{chatOptions.alias}</div>
+              <div className="text-xs text-gray-500 font-medium">{chatOptions.email}</div>
+            </div>
+            <div className="p-4 space-y-2">
+              <button 
+                onClick={() => {
+                  setChatToRename({ email: chatOptions.email, alias: chatOptions.alias });
+                  setChatOptions(null);
+                }}
+                className="w-full flex items-center gap-4 px-6 py-4 text-sm font-bold hover:bg-white/5 rounded-2xl transition-all text-left text-accent group"
+              >
+                <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Edit size={16} />
+                </div>
+                Edit Display Name
+              </button>
+              <button 
+                onClick={() => deleteThread(chatOptions.email)}
+                className="w-full flex items-center gap-4 px-6 py-4 text-sm font-bold hover:bg-red-500/10 rounded-2xl transition-all text-left text-red-500 group"
+              >
+                <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Trash2 size={16} />
+                </div>
+                Delete Conversation
+              </button>
+              <button 
+                onClick={() => setChatOptions(null)}
+                className="w-full flex items-center gap-4 px-6 py-4 text-sm font-bold hover:bg-white/5 rounded-2xl transition-all text-left text-gray-400 group"
+              >
+                <div className="w-8 h-8 bg-white/5 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <X size={16} />
+                </div>
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+
+    {/* Rename Chat Modal */}
+    <AnimatePresence>
+      {chatToRename && (
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="glass p-8 rounded-[2.5rem] max-w-sm w-full space-y-6 border border-white/10 shadow-2xl"
+          >
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center border border-accent/20">
+                <Edit size={24} className="text-accent" />
+              </div>
+              <h3 className="text-2xl font-display font-black">Rename User</h3>
+            </div>
+            <div className="space-y-3">
+              <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest ml-1">Custom Alias (Admin Only)</label>
+              <input 
+                value={chatToRename.alias}
+                onChange={e => setChatToRename({...chatToRename, alias: e.target.value})}
+                placeholder="Enter name..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:border-accent outline-none transition-all"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => setChatToRename(null)} className="flex-grow py-4 glass rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-white/10 transition-all">Cancel</button>
+              <button onClick={() => updateAlias(chatToRename.email, chatToRename.alias)} className="flex-grow py-4 bg-accent text-black rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-accent/20 transition-all">Save Changes</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  </div>
   );
 };
 
@@ -1405,7 +1506,7 @@ export default function App() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [showOwnerChat, setShowOwnerChat] = useState(false);
+  const [showOwnerChat, setShowOwnerChat] = useState<{ open: boolean, message?: string }>({ open: false });
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<'admin' | 'user'>('user');
   const [loginEmail, setLoginEmail] = useState('');
@@ -1518,6 +1619,9 @@ export default function App() {
         .eq('id', user.id);
       
       if (profileError) throw profileError;
+      
+      // Delete user messages
+      await fetch(`/api/user/messages/${user.email}`, { method: 'DELETE' });
 
       // Sign out
       await supabase.auth.signOut();
@@ -1609,7 +1713,38 @@ export default function App() {
     setShowAdmin(false);
   };
 
-  if (!data) return <div className="h-screen flex items-center justify-center text-accent animate-pulse">Loading Webora...</div>;
+  if (!data) return (
+    <div className="h-screen bg-[#0a0a0a] flex flex-col items-center justify-center relative overflow-hidden">
+      <div className="absolute inset-0 z-0">
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+          transition={{ duration: 4, repeat: Infinity }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-accent/20 blur-[120px] rounded-full"
+        />
+      </div>
+      <div className="relative z-10 flex flex-col items-center">
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="w-20 h-20 bg-accent rounded-3xl flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(0,255,136,0.3)]"
+        >
+          <div className="w-10 h-10 bg-black rounded-lg rotate-45 animate-pulse" />
+        </motion.div>
+        <h2 className="text-2xl font-display font-black tracking-tighter text-white mb-2">WEBORA</h2>
+        <div className="flex gap-1">
+          {[0, 1, 2].map(i => (
+            <motion.div 
+              key={i}
+              animate={{ y: [0, -5, 0], opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+              className="w-1.5 h-1.5 bg-accent rounded-full"
+            />
+          ))}
+        </div>
+        <p className="text-[10px] uppercase font-black tracking-[0.3em] text-gray-500 mt-6">Loading Experience</p>
+      </div>
+    </div>
+  );
 
   const context = `Services: ${data.services.map(s => `${s.name} (₹${s.price})`).join(', ')}. Projects: ${data.projects.map(p => p.title).join(', ')}.`;
 
@@ -1620,54 +1755,63 @@ export default function App() {
         isAdmin={userRole === 'admin'} 
         user={user}
         onLogout={handleLogout}
-        onStartChat={() => setShowOwnerChat(true)}
+        onStartChat={() => setShowOwnerChat({ open: true })}
       />
 
       {/* Profile Dropdown Menu */}
       <AnimatePresence>
         {showProfileMenu && user && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed top-20 right-6 z-[60] glass w-64 rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-20 right-6 z-[60] glass w-72 rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
           >
-            <div className="p-4 border-b border-white/5">
-              <div className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-1">Signed in as</div>
-              <div className="text-sm font-bold truncate">{user.email}</div>
-              <div className="text-[10px] text-accent font-bold uppercase mt-1">{userRole}</div>
+            <div className="p-6 border-b border-white/5 bg-white/5 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-accent opacity-50" />
+              <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest mb-2">Authenticated User</div>
+              <div className="text-sm font-black truncate text-white">{user.email}</div>
+              <div className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-[9px] font-black uppercase rounded border border-accent/20 mt-2">{userRole}</div>
             </div>
             
-            <div className="p-2 space-y-1">
+            <div className="p-3 space-y-1">
               {userRole === 'admin' && (
                 <>
                   <button 
                     onClick={() => { setViewMode('control'); setShowProfileMenu(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-colors text-left ${viewMode === 'control' ? 'bg-accent text-black' : 'hover:bg-white/5'}`}
+                    className={`w-full flex items-center gap-4 px-4 py-3.5 text-xs font-black uppercase tracking-widest rounded-2xl transition-all text-left group ${viewMode === 'control' ? 'bg-accent text-black shadow-lg shadow-accent/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                   >
-                    <Settings size={18} className={viewMode === 'control' ? 'text-black' : 'text-accent'} /> Control Panel
+                    <Settings size={16} className={viewMode === 'control' ? 'text-black' : 'text-accent'} /> 
+                    <span>Control Panel</span>
+                    {viewMode !== 'control' && <ChevronRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />}
                   </button>
                   <button 
                     onClick={() => { setViewMode('web'); setShowProfileMenu(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-xl transition-colors text-left ${viewMode === 'web' ? 'bg-accent text-black' : 'hover:bg-white/5'}`}
+                    className={`w-full flex items-center gap-4 px-4 py-3.5 text-xs font-black uppercase tracking-widest rounded-2xl transition-all text-left group ${viewMode === 'web' ? 'bg-accent text-black shadow-lg shadow-accent/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                   >
-                    <Globe size={18} className={viewMode === 'web' ? 'text-black' : 'text-accent'} /> Web View
+                    <Globe size={16} className={viewMode === 'web' ? 'text-black' : 'text-accent'} /> 
+                    <span>Live Website</span>
+                    {viewMode !== 'web' && <ChevronRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />}
                   </button>
+                  <div className="h-px bg-white/5 my-2 mx-2" />
                 </>
               )}
               
               <button 
                 onClick={() => { setShowUserProfile(true); setShowProfileMenu(false); }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-white/5 rounded-xl transition-colors text-left"
+                className="w-full flex items-center gap-4 px-4 py-3.5 text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-white/5 text-gray-400 hover:text-white transition-all text-left group"
               >
-                <User size={18} /> My Profile
+                <User size={16} className="text-accent" /> 
+                <span>My Profile</span>
+                <ChevronRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
-              
+
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-red-500/10 text-red-500 rounded-xl transition-colors text-left"
+                className="w-full flex items-center gap-4 px-4 py-3.5 text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-all text-left group"
               >
-                <LogOut size={18} /> Logout
+                <LogOut size={16} className="text-red-500" /> 
+                <span>Sign Out</span>
               </button>
             </div>
           </motion.div>
@@ -1679,7 +1823,7 @@ export default function App() {
         <AdminPanel data={data} onUpdate={fetchData} onClose={() => setViewMode('web')} user={user} />
       ) : (
         <>
-          <Hero onStartChat={() => setShowOwnerChat(true)} settings={data.settings} />
+          <Hero onStartChat={() => setShowOwnerChat({ open: true })} settings={data.settings} />
 
           {/* Services Section */}
           <section id="services" className="py-32 px-6 relative overflow-hidden">
@@ -1694,7 +1838,7 @@ export default function App() {
                 <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto">Choose the perfect plan for your digital presence.</p>
                 <div className="w-24 h-1.5 bg-accent mx-auto rounded-full mt-8" />
               </motion.div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {data.services.map((s: Service, idx: number) => (
                   <motion.div
                     key={s.id}
@@ -1703,7 +1847,10 @@ export default function App() {
                     viewport={{ once: true }}
                     transition={{ delay: idx * 0.1 }}
                   >
-                    <ServiceCard service={s} onChoosePlan={() => setShowOwnerChat(true)} />
+                    <ServiceCard 
+                      service={s} 
+                      onChoosePlan={(plan) => setShowOwnerChat({ open: true, message: `Hi! I am interested in the ${plan} plan. Can we discuss further?` })} 
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -1719,13 +1866,13 @@ export default function App() {
                   <p className="text-gray-400">Industry-level projects crafted with precision.</p>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-4 md:pb-0 scrollbar-hide">
-                  {['All', ...new Set(data.projects.map(p => p.category))].map(cat => (
+                  {['All', 'Elite', 'Pro', 'Premium', 'Custom'].map(plan => (
                     <button
-                      key={cat}
-                      onClick={() => setFilter(cat)}
-                      className={`px-6 py-2.5 rounded-2xl text-sm font-medium transition-all whitespace-nowrap ${filter === cat ? 'bg-accent text-black shadow-lg shadow-accent/20' : 'glass text-gray-400 hover:text-white hover:bg-white/10'}`}
+                      key={plan}
+                      onClick={() => setFilter(plan)}
+                      className={`px-6 py-2.5 rounded-2xl text-sm font-medium transition-all whitespace-nowrap ${filter === plan ? 'bg-accent text-black shadow-lg shadow-accent/20' : 'glass text-gray-400 hover:text-white hover:bg-white/10'}`}
                     >
-                      {cat}
+                      {plan}
                     </button>
                   ))}
                 </div>
@@ -1737,7 +1884,7 @@ export default function App() {
                   </div>
                 ) : (
                   data.projects
-                    .filter(p => filter === 'All' || p.category === filter)
+                    .filter(p => filter === 'All' || p.plan === filter)
                     .map((p: Project) => (
                     <motion.div 
                       key={p.id}
@@ -1816,7 +1963,13 @@ export default function App() {
       )}
 
       <AnimatePresence>
-        {showOwnerChat && <OwnerChatPage user={user} onClose={() => setShowOwnerChat(false)} />}
+        {showOwnerChat.open && (
+          <OwnerChatPage 
+            user={user} 
+            onClose={() => setShowOwnerChat({ open: false })} 
+            initialMessage={showOwnerChat.message}
+          />
+        )}
       </AnimatePresence>
 
       <AIChatBot context={context} isOpen={isChatOpen} setIsOpen={setIsChatOpen} />
@@ -1938,148 +2091,119 @@ export default function App() {
 
       {/* Login Modal */}
       {showLogin && (
-        <div className="fixed inset-0 z-[110] bg-black/98 flex items-center justify-center p-6 backdrop-blur-md overflow-hidden">
-          {/* Animated Background Elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.2, 1],
-                opacity: [0.1, 0.2, 0.1],
-                rotate: [0, 90, 0]
-              }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] bg-accent/20 blur-[120px] rounded-full"
-            />
-            <motion.div 
-              animate={{ 
-                scale: [1, 1.3, 1],
-                opacity: [0.05, 0.15, 0.05],
-                rotate: [0, -90, 0]
-              }}
-              transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-              className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-blue-500/10 blur-[100px] rounded-full"
-            />
-          </div>
-
+        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-6">
           <motion.div 
-            initial={{ opacity: 0, y: 40, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.9 }}
-            className="relative glass p-8 md:p-12 rounded-[2.5rem] w-full max-w-md border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
+            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 40 }}
+            className="glass w-full max-w-xl rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 relative"
           >
-            {/* Decorative line */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
+            <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-accent to-transparent opacity-50" />
+            
+            <div className="p-8 md:p-12">
+              <div className="flex justify-between items-center mb-12">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-accent rounded-xl flex items-center justify-center shadow-lg shadow-accent/20">
+                    <div className="w-5 h-5 bg-black rounded-sm rotate-45" />
+                  </div>
+                  <h2 className="text-2xl font-display font-black tracking-tight">WEBORA</h2>
+                </div>
+                <button onClick={() => setShowLogin(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24} /></button>
+              </div>
 
-            <div className="text-center mb-10">
-              <motion.div 
-                initial={{ rotate: -10, scale: 0.8 }}
-                animate={{ rotate: 0, scale: 1 }}
-                transition={{ type: "spring", damping: 12 }}
-                className="w-20 h-20 bg-accent/10 rounded-3xl mx-auto mb-6 flex items-center justify-center border border-accent/20 shadow-inner group"
-              >
-                <LogIn className="text-accent group-hover:scale-110 transition-transform duration-500" size={40} />
-              </motion.div>
-              <h2 className="text-4xl font-display font-bold mb-3 tracking-tight">
-                {isSignUp ? 'Join Webora' : 'Welcome Back'}
-              </h2>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                {isSignUp ? 'Create an account to start your project' : 'Login to manage your services and chats'}
-              </p>
-            </div>
+              <div className="mb-10">
+                <h3 className="text-4xl font-display font-black mb-3">{isSignUp ? 'Join Webora' : 'Welcome Back'}</h3>
+                <p className="text-gray-500 text-sm font-medium">Industry-level digital solutions at your fingertips.</p>
+              </div>
 
-            <div className="space-y-6">
               {authError && (
                 <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-sm font-medium text-center flex items-center justify-center gap-2"
+                  className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl text-xs font-bold mb-8 flex items-center gap-3"
                 >
-                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                  {authError}
+                  <Shield size={16} /> {authError}
                 </motion.div>
               )}
-              
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2">Email Address</label>
-                <div className="relative group">
-                  <input 
-                    type="email" 
-                    placeholder="name@example.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    disabled={authLoading}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-accent/50 focus:bg-white/10 transition-all text-white placeholder:text-gray-600"
-                  />
-                  <div className="absolute inset-0 rounded-2xl border border-accent/0 group-focus-within:border-accent/30 pointer-events-none transition-all" />
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-center ml-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Password</label>
-                  {!isSignUp && (
-                    <button className="text-[10px] text-accent hover:text-white transition-colors font-black uppercase tracking-tighter">Forgot Password?</button>
-                  )}
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-black tracking-widest text-gray-500 ml-2">Email Address</label>
+                  <div className="relative group">
+                    <input 
+                      type="email" 
+                      placeholder="name@example.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      disabled={authLoading}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 outline-none focus:border-accent/50 focus:bg-white/10 transition-all text-white placeholder:text-gray-700"
+                    />
+                    <div className="absolute inset-0 rounded-2xl border border-accent/0 group-focus-within:border-accent/30 pointer-events-none transition-all" />
+                  </div>
                 </div>
-                <div className="relative group">
-                  <input 
-                    type="password" 
-                    placeholder="••••••••"
-                    value={loginPass}
-                    onChange={(e) => setLoginPass(e.target.value)}
-                    disabled={authLoading}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-accent/50 focus:bg-white/10 transition-all text-white placeholder:text-gray-600"
-                  />
-                  <div className="absolute inset-0 rounded-2xl border border-accent/0 group-focus-within:border-accent/30 pointer-events-none transition-all" />
+
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-black tracking-widest text-gray-500 ml-2">Password</label>
+                  <div className="relative group">
+                    <input 
+                      type="password" 
+                      placeholder="••••••••"
+                      value={loginPass}
+                      onChange={(e) => setLoginPass(e.target.value)}
+                      disabled={authLoading}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 outline-none focus:border-accent/50 focus:bg-white/10 transition-all text-white placeholder:text-gray-700"
+                    />
+                    <div className="absolute inset-0 rounded-2xl border border-accent/0 group-focus-within:border-accent/30 pointer-events-none transition-all" />
+                  </div>
                 </div>
-              </div>
-              
-              <motion.button 
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleAuthAction}
-                disabled={authLoading}
-                className="w-full py-5 bg-accent text-black font-black rounded-2xl shadow-[0_10px_30px_rgba(0,255,136,0.2)] hover:shadow-[0_15px_40px_rgba(0,255,136,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 text-xl uppercase tracking-wider overflow-hidden relative group"
-              >
-                <span className="relative z-10">
-                  {authLoading ? (
-                    <div className="flex items-center justify-center gap-3">
-                      <div className="w-5 h-5 border-3 border-black/20 border-t-black rounded-full animate-spin" />
-                      <span>Authenticating...</span>
-                    </div>
-                  ) : (isSignUp ? 'Create Account' : 'Sign In')}
-                </span>
-                <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
-              </motion.button>
-
-              <div className="relative py-6">
-                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
-                <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-[#0a0a0a] px-4 text-gray-600">Secure Access</span></div>
-              </div>
-
-              <div className="text-center space-y-4">
-                <button 
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setAuthError(null);
-                  }}
-                  disabled={authLoading}
-                  className="text-sm text-gray-400 hover:text-accent transition-all font-bold group"
-                >
-                  {isSignUp ? (
-                    <>Already have an account? <span className="text-accent group-hover:underline">Sign In</span></>
-                  ) : (
-                    <>Don't have an account? <span className="text-accent group-hover:underline">Create one</span></>
-                  )}
-                </button>
                 
-                <button 
-                  onClick={() => setShowLogin(false)}
+                <motion.button 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleAuthAction}
                   disabled={authLoading}
-                  className="block w-full text-gray-600 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors pt-2"
+                  className="w-full py-6 bg-accent text-black font-black rounded-2xl shadow-[0_20px_40px_rgba(0,255,136,0.2)] hover:shadow-[0_25px_50px_rgba(0,255,136,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 text-xs uppercase tracking-[0.2em] overflow-hidden relative group"
                 >
-                  Return to Home
-                </button>
+                  <span className="relative z-10 flex items-center justify-center gap-3">
+                    {authLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-3 border-black/20 border-t-black rounded-full animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (isSignUp ? 'Create Account' : 'Sign In')}
+                  </span>
+                  <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity" />
+                </motion.button>
+
+                <div className="relative py-8">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest"><span className="bg-[#0a0a0a] px-6 text-gray-600">Secure Authentication</span></div>
+                </div>
+
+                <div className="text-center space-y-6">
+                  <button 
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setAuthError(null);
+                    }}
+                    disabled={authLoading}
+                    className="text-xs text-gray-500 hover:text-accent transition-all font-bold group"
+                  >
+                    {isSignUp ? (
+                      <>Already have an account? <span className="text-accent group-hover:underline ml-1">Sign In</span></>
+                    ) : (
+                      <>Don't have an account? <span className="text-accent group-hover:underline ml-1">Create one</span></>
+                    )}
+                  </button>
+                  
+                  <button 
+                    onClick={() => setShowLogin(false)}
+                    disabled={authLoading}
+                    className="block w-full text-gray-700 text-[10px] font-black uppercase tracking-[0.3em] hover:text-white transition-colors pt-4 border-t border-white/5"
+                  >
+                    Return to Home
+                  </button>
+                </div>
               </div>
             </div>
           </motion.div>
