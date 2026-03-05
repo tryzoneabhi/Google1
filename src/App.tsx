@@ -282,19 +282,16 @@ const AIChatBot = ({ context, isOpen, setIsOpen }: { context: string, isOpen: bo
       
       const systemInstruction = `You are Webora AI, an advanced assistant built by Sanskar for Webora. 
               
-      Context about Webora: ${context}
+      Context about Webora (Current Data):
+      ${context}
       
       Key Information:
       - Creator: You were created by Sanskar specifically for Webora. If anyone asks "Who made you?" or "Who is your creator?", you MUST answer: "I was created by Sanskar for Webora."
       - Webora's Mission: To provide industry-standard digital solutions.
-      - Plans & Pricing:
-        1. Elite (₹499): 1 Week Delivery, AI Integration, Database, Vercel Hosting.
-        2. Pro (₹599): 6 Days Delivery, Source Code, Elite Features, Custom Domain.
-        3. Premium (₹999): 5 Days Delivery, All Pro Features, 1 Year Maintenance, 10% Off.
-        4. Custom: Tailored Solutions, Enterprise Grade, Dedicated Support.
       
       Guidelines:
-      - If asked about plans or pricing, explain the details of Elite, Pro, Premium, and Custom plans clearly and encourage them to choose one.
+      - If asked about plans or pricing, use the dynamic data provided in the context above. Explain the details of the available services clearly.
+      - If a user asks for a recommendation or which plan to choose (e.g., "kon sa plan lu?"), always recommend the **Premium** plan as it offers the best value and comprehensive features.
       - Be helpful, professional, and concise.
       - Suggest using 'Get Started' or 'Contact Us' buttons for direct owner contact.`;
 
@@ -1944,9 +1941,10 @@ export default function App() {
           setAuthLoading(false);
           return;
         }
-      } catch (fErr) {
-        console.warn("Local admin login failed, checking hardcoded super admin...");
-        // Fallback for Vercel: Hardcoded Super Admin check if local DB is unavailable
+      } catch (fErr: any) {
+        console.warn("Local admin login failed:", fErr);
+        
+        // Fallback for Vercel/Local: Hardcoded Super Admin check if local DB is unavailable
         if (loginEmail === '1singhsanskar11@gmail.com' && loginPass === 'admin123') {
           setUser({ id: 'admin-1singhsanskar11@gmail.com', email: '1singhsanskar11@gmail.com', is_admin: true, is_super: true });
           setUserRole('admin');
@@ -1955,9 +1953,21 @@ export default function App() {
           setAuthLoading(false);
           return;
         }
+        
+        // If it's a network error and not the hardcoded admin, we should still try Supabase 
+        // but maybe warn the user if it looks like a server issue
+        if (fErr.message === 'Failed to fetch') {
+          console.error("Server is unreachable. Trying Supabase fallback...");
+        }
       }
 
-      // If not an admin, proceed with Supabase for regular users
+      // If not an admin or local server failed, proceed with Supabase for regular users
+      if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+        if (!isSignUp) {
+          throw new Error("Login failed: Local server is unreachable and Supabase is not configured. Please contact the administrator.");
+        }
+      }
+
       if (isSignUp) {
         const { data: authData, error } = await supabase.auth.signUp({
           email: loginEmail,
@@ -1999,7 +2009,11 @@ export default function App() {
         }
       }
     } catch (err: any) {
-      setAuthError(err.message || "An error occurred");
+      let message = err.message || "An error occurred";
+      if (message === "Failed to fetch") {
+        message = "Connection error: The server might be down or your internet is disconnected. Please try again in a few moments.";
+      }
+      setAuthError(message);
     } finally {
       setAuthLoading(false);
     }
@@ -2041,7 +2055,11 @@ export default function App() {
     </div>
   );
 
-  const context = `Services: ${data.services.map(s => `${s.name} (₹${s.price})`).join(', ')}. Projects: ${data.projects.map(p => p.title).join(', ')}.`;
+  const context = `
+    Services & Pricing: ${data.services.map(s => `${s.name} - ₹${s.price} (Features: ${s.features})`).join('; ')}.
+    Portfolio Projects: ${data.projects.map(p => p.title).join(', ')}.
+    Website Content: ${data.settings.map(s => `${s.key.replace(/_/g, ' ')}: ${s.value}`).join(' | ')}.
+  `;
 
   return (
     <div className="relative overflow-x-hidden">

@@ -270,7 +270,8 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Webora Server is now active on port ${PORT}`);
+    console.log(`Database initialized: webora.db`);
   });
 }
 
