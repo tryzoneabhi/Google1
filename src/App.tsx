@@ -33,6 +33,22 @@ import {
   LogIn
 } from 'lucide-react';
 import { AppData, Project, Service, Setting } from './types';
+
+const DEFAULT_DATA: AppData = {
+  settings: [
+    { key: 'hero_title', value: 'Industry-Level **Digital** Experiences' },
+    { key: 'hero_subtitle', value: 'We build high-performance web applications, AI integrations, and digital solutions tailored for your business growth.' },
+    { key: 'about_text', value: 'Webora is a premium digital agency founded by Sanskar. We specialize in creating high-end web experiences that combine cutting-edge technology with world-class design.' }
+  ],
+  projects: [
+    { id: 1, title: 'Webora Platform', description: 'Our own high-performance digital solutions platform.', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80', category: 'Web App', link: '#' }
+  ],
+  services: [
+    { id: 1, name: 'Elite', price: '499', features: '1 Week Delivery, AI Integration, Database, Vercel Hosting', tier: 'Elite' },
+    { id: 2, name: 'Pro', price: '599', features: '6 Days Delivery, Source Code, Elite Features, Custom Domain', tier: 'Pro' },
+    { id: 3, name: 'Premium', price: '999', features: '5 Days Delivery, All Pro Features, 1 Year Maintenance, 10% Off', tier: 'Premium' }
+  ]
+};
 import { supabase } from './services/supabaseClient';
 
 // --- Components ---
@@ -256,57 +272,58 @@ const AIChatBot = ({ context, isOpen, setIsOpen }: { context: string, isOpen: bo
     setIsTyping(true);
 
     try {
-      // Using OpenRouter API as requested
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer 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`,
-          "HTTP-Referer": window.location.origin,
-          "X-Title": "Webora AI",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          "model": "google/gemini-2.0-flash-lite-preview-02-05:free",
-          "messages": [
-            {
-              "role": "system",
-              "content": `You are Webora AI, an advanced assistant built by Sanskar for Webora. 
-              
-              Context about Webora: ${context}
-              
-              Key Information:
-              - Creator: You were created by Sanskar specifically for Webora. If anyone asks "Who made you?" or "Who is your creator?", you MUST answer: "I was created by Sanskar for Webora."
-              - Webora's Mission: To provide industry-standard digital solutions.
-              - Plans & Pricing:
-                1. Elite (₹499): 1 Week Delivery, AI Integration, Database, Vercel Hosting.
-                2. Pro (₹599): 6 Days Delivery, Source Code, Elite Features, Custom Domain.
-                3. Premium (₹999): 5 Days Delivery, All Pro Features, 1 Year Maintenance, 10% Off.
-                4. Custom: Tailored Solutions, Enterprise Grade, Dedicated Support.
-              
-              Guidelines:
-              - If asked about plans or pricing, explain the details of Elite, Pro, Premium, and Custom plans clearly and encourage them to choose one.
-              - Be helpful, professional, and concise.
-              - Suggest using 'Get Started' or 'Contact Us' buttons for direct owner contact.`
-            },
-            ...messages.map(m => ({
-              role: m.role === 'user' ? 'user' : 'assistant',
-              content: m.text
-            }))
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || "API Error");
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("API Key is missing. Please check your environment variables.");
       }
 
-      const data = await response.json();
-      const aiText = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that.";
+      const ai = new GoogleGenAI({ apiKey });
+      const model = "gemini-3-flash-preview"; 
+      
+      const systemInstruction = `You are Webora AI, an advanced assistant built by Sanskar for Webora. 
+              
+      Context about Webora: ${context}
+      
+      Key Information:
+      - Creator: You were created by Sanskar specifically for Webora. If anyone asks "Who made you?" or "Who is your creator?", you MUST answer: "I was created by Sanskar for Webora."
+      - Webora's Mission: To provide industry-standard digital solutions.
+      - Plans & Pricing:
+        1. Elite (₹499): 1 Week Delivery, AI Integration, Database, Vercel Hosting.
+        2. Pro (₹599): 6 Days Delivery, Source Code, Elite Features, Custom Domain.
+        3. Premium (₹999): 5 Days Delivery, All Pro Features, 1 Year Maintenance, 10% Off.
+        4. Custom: Tailored Solutions, Enterprise Grade, Dedicated Support.
+      
+      Guidelines:
+      - If asked about plans or pricing, explain the details of Elite, Pro, Premium, and Custom plans clearly and encourage them to choose one.
+      - Be helpful, professional, and concise.
+      - Suggest using 'Get Started' or 'Contact Us' buttons for direct owner contact.`;
+
+      const chat = ai.chats.create({
+        model: model,
+        config: {
+          systemInstruction: systemInstruction,
+        },
+        history: messages.slice(1).map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }]
+        }))
+      });
+
+      const result = await chat.sendMessage({ message: userMsg });
+      const aiText = result.text || "I'm sorry, I couldn't process that.";
+      
       setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
     } catch (error: any) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'ai', text: `Error: ${error.message || "I'm having trouble connecting right now."}` }]);
+      let errorMessage = "Sorry, I'm having trouble connecting to the AI service right now.";
+      
+      if (error.message?.includes("API Key")) {
+        errorMessage = "AI Assistant is not configured correctly (Missing API Key).";
+      } else if (error.message?.includes("not found")) {
+        errorMessage = "The AI model is currently unavailable. Please try again later.";
+      }
+      
+      setMessages(prev => [...prev, { role: 'ai', text: errorMessage }]);
     } finally {
       setIsTyping(false);
     }
@@ -390,17 +407,40 @@ const OwnerChatPage = ({ user, onClose, initialMessage }: { user: any, onClose: 
     if (!user?.email) return;
     try {
       const res = await fetch(`/api/messages/${user.email}`);
-      const data = await res.json();
-      const formatted = data.flatMap((m: any) => {
-        const msgs = [{ role: 'user', text: m.message, created_at: m.created_at }];
-        if (m.reply) {
-          msgs.push({ role: 'admin', text: m.reply, created_at: m.created_at });
-        }
-        return msgs;
-      });
-      setMessages(formatted.length > 0 ? formatted : [
-        { role: 'admin', text: 'Hi! I am the owner of Webora. How can I help you with your project today?' }
-      ]);
+      if (res.ok) {
+        const data = await res.json();
+        const formatted = data.flatMap((m: any) => {
+          const msgs = [{ role: 'user', text: m.message, created_at: m.created_at }];
+          if (m.reply) {
+            msgs.push({ role: 'admin', text: m.reply, created_at: m.created_at });
+          }
+          return msgs;
+        });
+        setMessages(formatted.length > 0 ? formatted : [
+          { role: 'admin', text: 'Hi! I am the owner of Webora. How can I help you with your project today?' }
+        ]);
+        return;
+      }
+      
+      // Fallback to Supabase
+      const { data: supabaseMsgs } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('email', user.email)
+        .order('created_at', { ascending: true });
+        
+      if (supabaseMsgs) {
+        const formatted = supabaseMsgs.flatMap((m: any) => {
+          const msgs = [{ role: 'user', text: m.message, created_at: m.created_at }];
+          if (m.reply) {
+            msgs.push({ role: 'admin', text: m.reply, created_at: m.created_at });
+          }
+          return msgs;
+        });
+        setMessages(formatted.length > 0 ? formatted : [
+          { role: 'admin', text: 'Hi! I am the owner of Webora. How can I help you with your project today?' }
+        ]);
+      }
     } catch (err) {
       console.error("Fetch messages error:", err);
     }
@@ -425,7 +465,7 @@ const OwnerChatPage = ({ user, onClose, initialMessage }: { user: any, onClose: 
     setLoading(true);
     
     try {
-      await fetch('/api/messages', {
+      const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -434,9 +474,29 @@ const OwnerChatPage = ({ user, onClose, initialMessage }: { user: any, onClose: 
           message: userMsg
         })
       });
+      
+      if (!res.ok) {
+        // Fallback to Supabase
+        await supabase.from('messages').insert({
+          name: user.user_metadata?.full_name || user.email.split('@')[0],
+          email: user.email,
+          message: userMsg
+        });
+      }
       fetchMessages();
     } catch (err) {
       console.error("Send message error:", err);
+      // Try Supabase directly on catch too
+      try {
+        await supabase.from('messages').insert({
+          name: user.user_metadata?.full_name || user.email.split('@')[0],
+          email: user.email,
+          message: userMsg
+        });
+        fetchMessages();
+      } catch (sErr) {
+        console.error("Supabase send error:", sErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -573,36 +633,79 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   }, [activeTab]);
 
   const fetchAdmins = async () => {
-    const res = await fetch('/api/admin/users');
-    const data = await res.json();
-    setAdmins(data);
+    try {
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        setAdmins(data);
+        return;
+      }
+      
+      // Fallback to Supabase
+      const { data: supabaseAdmins } = await supabase
+        .from('profiles')
+        .select('id, email, role')
+        .eq('role', 'admin');
+      
+      if (supabaseAdmins) {
+        setAdmins(supabaseAdmins.map(a => ({ ...a, is_super: a.email === '1singhsanskar11@gmail.com' })));
+      }
+    } catch (err) {
+      console.error("Fetch admins error:", err);
+    }
   };
 
   const addAdmin = async () => {
     if (!newAdmin.email || !newAdmin.password) return;
-    const res = await fetch('/api/admin/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newAdmin)
-    });
-    if (res.ok) {
-      setNewAdmin({ email: '', password: '' });
-      setShowAddAdmin(false);
-      fetchAdmins();
-    } else {
-      const err = await res.json();
-      alert(err.error || "Failed to add admin");
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAdmin)
+      });
+      if (res.ok) {
+        setNewAdmin({ email: '', password: '' });
+        setShowAddAdmin(false);
+        fetchAdmins();
+      } else {
+        // Fallback to Supabase Auth + Profile
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: newAdmin.email,
+          password: newAdmin.password,
+        });
+        if (authError) throw authError;
+        if (authData.user) {
+          await supabase.from('profiles').upsert({
+            id: authData.user.id,
+            email: authData.user.email,
+            role: 'admin'
+          });
+          setNewAdmin({ email: '', password: '' });
+          setShowAddAdmin(false);
+          fetchAdmins();
+        }
+      }
+    } catch (err: any) {
+      console.error("Add admin error:", err);
+      alert(err.message || "Failed to add admin");
     }
   };
 
-  const deleteAdmin = async (id: number) => {
+  const deleteAdmin = async (id: any) => {
     if (!confirm("Are you sure you want to delete this admin?")) return;
-    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchAdmins();
+      } else {
+        // Fallback to Supabase
+        await supabase.from('profiles').update({ role: 'user' }).eq('id', id);
+        fetchAdmins();
+      }
+    } catch (err) {
+      console.error("Delete admin error:", err);
+      await supabase.from('profiles').update({ role: 'user' }).eq('id', id);
       fetchAdmins();
-    } else {
-      const err = await res.json();
-      alert(err.error || "Failed to delete admin");
     }
   };
 
@@ -692,8 +795,36 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   const fetchChats = async () => {
     try {
       const res = await fetch('/api/admin/threads');
-      const data = await res.json();
-      setChats(data);
+      if (res.ok) {
+        const data = await res.json();
+        setChats(data);
+        return;
+      }
+      
+      // Fallback to Supabase
+      const { data: allMsgs } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      const { data: aliases } = await supabase
+        .from('user_aliases')
+        .select('*');
+
+      if (allMsgs) {
+        // Group by email and get latest
+        const uniqueThreads: any[] = [];
+        const seenEmails = new Set();
+        
+        allMsgs.forEach(m => {
+          if (!seenEmails.has(m.email)) {
+            seenEmails.add(m.email);
+            const aliasObj = aliases?.find(a => a.email === m.email);
+            uniqueThreads.push({ ...m, alias: aliasObj?.alias });
+          }
+        });
+        setChats(uniqueThreads);
+      }
     } catch (err) {
       console.error("Fetch threads error:", err);
     }
@@ -702,15 +833,36 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
   const fetchChatMessages = async (email: string) => {
     try {
       const res = await fetch(`/api/admin/messages/${email}`);
-      const data = await res.json();
-      const formatted = data.flatMap((m: any) => {
-        const msgs = [{ sender_id: 'user', message_text: m.message, id: m.id }];
-        if (m.reply) {
-          msgs.push({ sender_id: user.id, message_text: m.reply, id: `reply-${m.id}` });
-        }
-        return msgs;
-      });
-      setChatMessages(formatted);
+      if (res.ok) {
+        const data = await res.json();
+        const formatted = data.flatMap((m: any) => {
+          const msgs = [{ sender_id: 'user', message_text: m.message, id: m.id }];
+          if (m.reply) {
+            msgs.push({ sender_id: user.id, message_text: m.reply, id: `reply-${m.id}` });
+          }
+          return msgs;
+        });
+        setChatMessages(formatted);
+        return;
+      }
+      
+      // Fallback to Supabase
+      const { data: supabaseMsgs } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('email', email)
+        .order('created_at', { ascending: true });
+        
+      if (supabaseMsgs) {
+        const formatted = supabaseMsgs.flatMap((m: any) => {
+          const msgs = [{ sender_id: 'user', message_text: m.message, id: m.id }];
+          if (m.reply) {
+            msgs.push({ sender_id: user.id, message_text: m.reply, id: `reply-${m.id}` });
+          }
+          return msgs;
+        });
+        setChatMessages(formatted);
+      }
     } catch (err) {
       console.error("Fetch chat messages error:", err);
     }
@@ -718,15 +870,21 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
 
   const sendReply = async () => {
     if (!adminReply.trim() || !selectedChat) return;
-    // We reply to the latest message in the thread that doesn't have a reply yet, 
-    // or just the latest one. For simplicity, we'll reply to the selectedChat.id
-    // but really we should probably reply to the latest message from that user.
     try {
-      await fetch('/api/admin/messages/reply', {
+      const res = await fetch('/api/admin/messages/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: selectedChat.id, reply: adminReply })
       });
+      
+      if (!res.ok) {
+        // Fallback to Supabase
+        await supabase
+          .from('messages')
+          .update({ reply: adminReply })
+          .eq('id', selectedChat.id);
+      }
+      
       setAdminReply('');
       fetchChats();
       if (selectedChat.email) {
@@ -734,19 +892,74 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
       }
     } catch (err) {
       console.error("Send reply error:", err);
+      // Try Supabase directly on catch
+      try {
+        await supabase
+          .from('messages')
+          .update({ reply: adminReply })
+          .eq('id', selectedChat.id);
+        setAdminReply('');
+        fetchChats();
+        if (selectedChat.email) fetchChatMessages(selectedChat.email);
+      } catch (sErr) {
+        console.error("Supabase reply error:", sErr);
+      }
     }
   };
   const updateService = async (tier: string, updates: { price?: string, features?: string }) => {
-    await fetch('/api/admin/services/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tier, ...updates })
-    });
+    try {
+      const res = await fetch('/api/admin/services/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, ...updates })
+      });
+      
+      if (!res.ok) {
+        // Fallback to Supabase
+        await supabase
+          .from('services')
+          .update(updates)
+          .eq('tier', tier);
+      }
+    } catch (err) {
+      console.error("Update service error:", err);
+      // Try Supabase directly
+      await supabase
+        .from('services')
+        .update(updates)
+        .eq('tier', tier);
+    }
     onUpdate();
   };
 
   const deleteProject = async (id: number) => {
-    await fetch(`/api/admin/projects/${id}`, { method: 'DELETE' });
+    try {
+      const res = await fetch(`/api/admin/projects/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        await supabase.from('projects').delete().eq('id', id);
+      }
+    } catch (err) {
+      console.error("Delete project error:", err);
+      await supabase.from('projects').delete().eq('id', id);
+    }
+    onUpdate();
+  };
+
+  const updateSetting = async (key: string, value: string) => {
+    try {
+      const res = await fetch('/api/admin/update-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value })
+      });
+      
+      if (!res.ok) {
+        await supabase.from('settings').upsert({ key, value });
+      }
+    } catch (err) {
+      console.error("Update setting error:", err);
+      await supabase.from('settings').upsert({ key, value });
+    }
     onUpdate();
   };
 
@@ -766,12 +979,25 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
         setShowAddProject(false);
         onUpdate();
       } else {
-        const err = await res.json();
-        alert(err.error || "Failed to add project");
+        // Fallback to Supabase
+        const { error } = await supabase.from('projects').insert(newProject);
+        if (error) throw error;
+        setNewProject({ title: '', description: '', image: '', category: '', link: '', plan: '' });
+        setShowAddProject(false);
+        onUpdate();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Add project error:", err);
-      alert("An error occurred while adding the project");
+      // Try Supabase directly on catch
+      try {
+        const { error } = await supabase.from('projects').insert(newProject);
+        if (error) throw error;
+        setNewProject({ title: '', description: '', image: '', category: '', link: '', plan: '' });
+        setShowAddProject(false);
+        onUpdate();
+      } catch (sErr: any) {
+        alert("Failed to add project: " + (sErr.message || "Unknown error"));
+      }
     }
   };
 
@@ -1328,14 +1554,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                       <input 
                         type="text" 
                         defaultValue={data.settings.find(s => s.key === 'hero_title')?.value}
-                        onBlur={async (e) => {
-                          await fetch('/api/admin/update-settings', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ key: 'hero_title', value: e.target.value })
-                          });
-                          onUpdate();
-                        }}
+                        onBlur={(e) => updateSetting('hero_title', e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-accent outline-none transition-colors"
                       />
                     </div>
@@ -1343,14 +1562,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                       <label className="text-xs text-gray-400 uppercase">Hero Subtitle</label>
                       <textarea 
                         defaultValue={data.settings.find(s => s.key === 'hero_subtitle')?.value}
-                        onBlur={async (e) => {
-                          await fetch('/api/admin/update-settings', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ key: 'hero_subtitle', value: e.target.value })
-                          });
-                          onUpdate();
-                        }}
+                        onBlur={(e) => updateSetting('hero_subtitle', e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-accent outline-none transition-colors h-24"
                       />
                     </div>
@@ -1358,14 +1570,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                       <label className="text-xs text-gray-400 uppercase">About Section Text</label>
                       <textarea 
                         defaultValue={data.settings.find(s => s.key === 'about_text')?.value}
-                        onBlur={async (e) => {
-                          await fetch('/api/admin/update-settings', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ key: 'about_text', value: e.target.value })
-                          });
-                          onUpdate();
-                        }}
+                        onBlur={(e) => updateSetting('about_text', e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-accent outline-none transition-colors h-32"
                       />
                     </div>
@@ -1402,16 +1607,11 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                         />
                       </div>
                       <button 
-                        onClick={async () => {
+                        onClick={() => {
                           if (!newSetting.key || !newSetting.value) return;
-                          await fetch('/api/admin/update-settings', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(newSetting)
-                          });
+                          updateSetting(newSetting.key, newSetting.value);
                           setNewSetting({ key: '', value: '' });
                           setShowAddSetting(false);
-                          onUpdate();
                         }}
                         className="w-full py-2 bg-accent text-black font-bold rounded-xl"
                       >
@@ -1427,14 +1627,7 @@ const AdminPanel = ({ data, onUpdate, onClose, user }: { data: AppData, onUpdate
                         <input 
                           type="text" 
                           defaultValue={s.value}
-                          onBlur={async (e) => {
-                            await fetch('/api/admin/update-settings', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ key: s.key, value: e.target.value })
-                            });
-                            onUpdate();
-                          }}
+                          onBlur={(e) => updateSetting(s.key, e.target.value)}
                           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:border-accent outline-none transition-colors"
                         />
                       </div>
@@ -1572,35 +1765,65 @@ export default function App() {
 
   const fetchData = async (retries = 3) => {
     try {
-      // Try local API first
-      const res = await fetch('/api/data');
+      // Try local API first with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const res = await fetch('/api/data', { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const json = await res.json();
-        setData(json);
-        return;
+        // Validate data structure
+        if (json && Array.isArray(json.settings) && Array.isArray(json.projects) && Array.isArray(json.services)) {
+          setData(json);
+          return;
+        }
       }
       
-      // Fallback to Supabase directly if local API fails (e.g. on Vercel)
-      console.log("Local API failed, falling back to Supabase...");
-      const { data: settings } = await supabase.from('settings').select('*');
-      const { data: projects } = await supabase.from('projects').select('*');
-      const { data: services } = await supabase.from('services').select('*');
+      // Fallback to Supabase directly if local API fails or returns invalid data
+      console.log("Local API failed or timed out, falling back to Supabase...");
       
-      if (settings && projects && services) {
+      const [settingsRes, projectsRes, servicesRes] = await Promise.all([
+        supabase.from('settings').select('*'),
+        supabase.from('projects').select('*'),
+        supabase.from('services').select('*')
+      ]);
+      
+      const settings = settingsRes.data;
+      const projects = projectsRes.data;
+      const services = servicesRes.data;
+      
+      if (settings && projects && services && settings.length > 0) {
         setData({ settings, projects, services });
       } else {
-        throw new Error("Failed to fetch from Supabase");
+        console.warn("Supabase data incomplete, using default data...");
+        setData(DEFAULT_DATA);
       }
     } catch (err) {
       console.error("Fetch error:", err);
       if (retries > 0) {
         setTimeout(() => fetchData(retries - 1), 2000);
+      } else {
+        console.warn("Retries exhausted, using default data...");
+        setData(DEFAULT_DATA);
       }
     }
   };
 
   useEffect(() => {
     fetchData();
+
+    // Fail-safe: Force load after 10 seconds if data is still null
+    const forceLoadTimeout = setTimeout(() => {
+      setData(prev => {
+        if (!prev) {
+          console.warn("Force loading with default data due to timeout...");
+          return DEFAULT_DATA;
+        }
+        return prev;
+      });
+    }, 10000);
 
     // Supabase Auth Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -1616,7 +1839,10 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(forceLoadTimeout);
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -1702,20 +1928,33 @@ export default function App() {
     setAuthLoading(true);
     try {
       // First, check if it's an admin login via our local DB
-      const adminRes = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPass })
-      });
+      try {
+        const adminRes = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loginEmail, password: loginPass })
+        });
 
-      if (adminRes.ok) {
-        const adminData = await adminRes.json();
-        setUser({ id: 'admin-' + adminData.admin.email, email: adminData.admin.email, is_admin: true, is_super: adminData.admin.is_super });
-        setUserRole('admin');
-        setShowLogin(false);
-        setViewMode('control');
-        setAuthLoading(false);
-        return;
+        if (adminRes.ok) {
+          const adminData = await adminRes.json();
+          setUser({ id: 'admin-' + adminData.admin.email, email: adminData.admin.email, is_admin: true, is_super: adminData.admin.is_super });
+          setUserRole('admin');
+          setShowLogin(false);
+          setViewMode('control');
+          setAuthLoading(false);
+          return;
+        }
+      } catch (fErr) {
+        console.warn("Local admin login failed, checking hardcoded super admin...");
+        // Fallback for Vercel: Hardcoded Super Admin check if local DB is unavailable
+        if (loginEmail === '1singhsanskar11@gmail.com' && loginPass === 'admin123') {
+          setUser({ id: 'admin-1singhsanskar11@gmail.com', email: '1singhsanskar11@gmail.com', is_admin: true, is_super: true });
+          setUserRole('admin');
+          setShowLogin(false);
+          setViewMode('control');
+          setAuthLoading(false);
+          return;
+        }
       }
 
       // If not an admin, proceed with Supabase for regular users
