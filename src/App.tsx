@@ -1928,7 +1928,17 @@ export default function App() {
     let isServerUnreachable = false;
 
     try {
-      // First, check if it's an admin login via our local DB
+      // First, check hardcoded super admin (Best for Vercel/Local fallback)
+      if (loginEmail === '1singhsanskar11@gmail.com' && loginPass === 'admin123') {
+        setUser({ id: 'admin-1singhsanskar11@gmail.com', email: '1singhsanskar11@gmail.com', is_admin: true, is_super: true });
+        setUserRole('admin');
+        setShowLogin(false);
+        setViewMode('control');
+        setAuthLoading(false);
+        return;
+      }
+
+      // Then, try local API login
       try {
         const adminRes = await fetch('/api/admin/login', {
           method: 'POST',
@@ -1944,33 +1954,9 @@ export default function App() {
           setViewMode('control');
           setAuthLoading(false);
           return;
-        } else if (adminRes.status === 401) {
-          // If it's a 401, the server is reachable but credentials are wrong
-          // We still check hardcoded admin just in case
-          if (loginEmail === '1singhsanskar11@gmail.com' && loginPass === 'admin123') {
-            setUser({ id: 'admin-1singhsanskar11@gmail.com', email: '1singhsanskar11@gmail.com', is_admin: true, is_super: true });
-            setUserRole('admin');
-            setShowLogin(false);
-            setViewMode('control');
-            setAuthLoading(false);
-            return;
-          }
-          // If not hardcoded admin, then it's definitely wrong credentials for admin
-          // But we continue to Supabase for regular users
         }
       } catch (fErr: any) {
         console.warn("Local admin login failed:", fErr);
-        
-        // Fallback for Vercel/Local: Hardcoded Super Admin check if local DB is unavailable
-        if (loginEmail === '1singhsanskar11@gmail.com' && loginPass === 'admin123') {
-          setUser({ id: 'admin-1singhsanskar11@gmail.com', email: '1singhsanskar11@gmail.com', is_admin: true, is_super: true });
-          setUserRole('admin');
-          setShowLogin(false);
-          setViewMode('control');
-          setAuthLoading(false);
-          return;
-        }
-        
         if (fErr.message === 'Failed to fetch') {
           isServerUnreachable = true;
           console.error("Server is unreachable. Trying Supabase fallback...");
