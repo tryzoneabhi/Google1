@@ -282,7 +282,8 @@ const AIChatBot = ({ context, isOpen, setIsOpen }: { context: string, isOpen: bo
       
       const systemInstruction = `You are Webora AI, an advanced assistant built by Sanskar for Webora. 
               
-      Context about Webora (Current Data):
+      IMPORTANT: You MUST use the following CURRENT DATA for all pricing and service information. DO NOT use any old or cached information.
+      
       ${context}
       
       Key Information:
@@ -290,10 +291,11 @@ const AIChatBot = ({ context, isOpen, setIsOpen }: { context: string, isOpen: bo
       - Webora's Mission: To provide industry-standard digital solutions.
       
       Guidelines:
-      - If asked about plans or pricing, use the dynamic data provided in the context above. Explain the details of the available services clearly.
-      - If a user asks for a recommendation or which plan to choose (e.g., "kon sa plan lu?"), always recommend the **Premium** plan as it offers the best value and comprehensive features.
-      - Be helpful, professional, and concise.
-      - Suggest using 'Get Started' or 'Contact Us' buttons for direct owner contact.`;
+      - PRICING: When asked about plans or pricing, explicitly state the prices for Elite, Pro, and Premium plans as listed in the CURRENT DATA above.
+      - RECOMMENDATION: If a user asks for a recommendation or which plan to choose (e.g., "kon sa plan lu?"), you MUST recommend the **Premium** plan. Explain that it offers the best value, 1 year of maintenance, and comprehensive features.
+      - CLARITY: Explain the features of each plan accurately based on the data provided.
+      - TONE: Be helpful, professional, and concise.
+      - CALL TO ACTION: Suggest using 'Get Started' or 'Contact Us' buttons for direct owner contact.`;
 
       const chat = ai.chats.create({
         model: model,
@@ -1923,6 +1925,8 @@ export default function App() {
     }
     
     setAuthLoading(true);
+    let isServerUnreachable = false;
+
     try {
       // First, check if it's an admin login via our local DB
       try {
@@ -1940,6 +1944,19 @@ export default function App() {
           setViewMode('control');
           setAuthLoading(false);
           return;
+        } else if (adminRes.status === 401) {
+          // If it's a 401, the server is reachable but credentials are wrong
+          // We still check hardcoded admin just in case
+          if (loginEmail === '1singhsanskar11@gmail.com' && loginPass === 'admin123') {
+            setUser({ id: 'admin-1singhsanskar11@gmail.com', email: '1singhsanskar11@gmail.com', is_admin: true, is_super: true });
+            setUserRole('admin');
+            setShowLogin(false);
+            setViewMode('control');
+            setAuthLoading(false);
+            return;
+          }
+          // If not hardcoded admin, then it's definitely wrong credentials for admin
+          // But we continue to Supabase for regular users
         }
       } catch (fErr: any) {
         console.warn("Local admin login failed:", fErr);
@@ -1954,17 +1971,25 @@ export default function App() {
           return;
         }
         
-        // If it's a network error and not the hardcoded admin, we should still try Supabase 
-        // but maybe warn the user if it looks like a server issue
         if (fErr.message === 'Failed to fetch') {
+          isServerUnreachable = true;
           console.error("Server is unreachable. Trying Supabase fallback...");
         }
       }
 
       // If not an admin or local server failed, proceed with Supabase for regular users
-      if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
-        if (!isSignUp) {
-          throw new Error("Login failed: Local server is unreachable and Supabase is not configured. Please contact the administrator.");
+      const isSupabaseConfigured = import.meta.env.VITE_SUPABASE_URL && !import.meta.env.VITE_SUPABASE_URL.includes('placeholder');
+      
+      if (!isSupabaseConfigured) {
+        if (isSignUp) {
+          throw new Error("Signup failed: Supabase is not configured. Please contact the administrator.");
+        } else {
+          if (isServerUnreachable) {
+            throw new Error("Login failed: Local server is unreachable and Supabase is not configured. Please contact the administrator.");
+          } else {
+            // Server was reachable but admin login failed, and no Supabase for regular users
+            throw new Error("Invalid credentials. Please try again.");
+          }
         }
       }
 
@@ -2056,9 +2081,14 @@ export default function App() {
   );
 
   const context = `
-    Services & Pricing: ${data.services.map(s => `${s.name} - ₹${s.price} (Features: ${s.features})`).join('; ')}.
-    Portfolio Projects: ${data.projects.map(p => p.title).join(', ')}.
-    Website Content: ${data.settings.map(s => `${s.key.replace(/_/g, ' ')}: ${s.value}`).join(' | ')}.
+    OFFICIAL SERVICES AND PRICING (USE THESE VALUES ONLY):
+    ${data.services.map(s => `- ${s.name} Plan: ₹${s.price}. Features: ${s.features}`).join('\n    ')}
+    
+    PORTFOLIO PROJECTS:
+    ${data.projects.map(p => `- ${p.title} (${p.category})`).join('\n    ')}
+    
+    WEBSITE DETAILS:
+    ${data.settings.map(s => `- ${s.key.replace(/_/g, ' ')}: ${s.value}`).join('\n    ')}
   `;
 
   return (
