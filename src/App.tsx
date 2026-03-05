@@ -214,7 +214,7 @@ const ServiceCard = ({ service, onChoosePlan }: { service: Service, onChoosePlan
       {service.price}
     </div>
     <ul className="space-y-4 mb-10 flex-grow relative z-10">
-      {service.features.split(',').map((f, i) => (
+      {(service.features || "").split(',').map((f, i) => (
         <li key={i} className="flex items-start gap-3 text-gray-400 text-sm leading-relaxed">
           <div className="mt-1 w-4 h-4 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 border border-accent/20">
             <ChevronRight size={10} className="text-accent" />
@@ -281,9 +281,10 @@ const AIChatBot = ({ context, isOpen, setIsOpen }: { context: string, isOpen: bo
                 1. Elite (₹499): 1 Week Delivery, AI Integration, Database, Vercel Hosting.
                 2. Pro (₹599): 6 Days Delivery, Source Code, Elite Features, Custom Domain.
                 3. Premium (₹999): 5 Days Delivery, All Pro Features, 1 Year Maintenance, 10% Off.
+                4. Custom: Tailored Solutions, Enterprise Grade, Dedicated Support.
               
               Guidelines:
-              - If asked about plans or pricing, explain the details of Elite, Pro, and Premium plans clearly and encourage them to choose one.
+              - If asked about plans or pricing, explain the details of Elite, Pro, Premium, and Custom plans clearly and encourage them to choose one.
               - Be helpful, professional, and concise.
               - Suggest using 'Get Started' or 'Contact Us' buttons for direct owner contact.`
             },
@@ -295,12 +296,17 @@ const AIChatBot = ({ context, isOpen, setIsOpen }: { context: string, isOpen: bo
         })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "API Error");
+      }
+
       const data = await response.json();
       const aiText = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that.";
       setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'ai', text: "Sorry, I'm having trouble connecting right now." }]);
+      setMessages(prev => [...prev, { role: 'ai', text: `Error: ${error.message || "I'm having trouble connecting right now."}` }]);
     } finally {
       setIsTyping(false);
     }
@@ -1566,10 +1572,25 @@ export default function App() {
 
   const fetchData = async (retries = 3) => {
     try {
+      // Try local API first
       const res = await fetch('/api/data');
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const json = await res.json();
-      setData(json);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+        return;
+      }
+      
+      // Fallback to Supabase directly if local API fails (e.g. on Vercel)
+      console.log("Local API failed, falling back to Supabase...");
+      const { data: settings } = await supabase.from('settings').select('*');
+      const { data: projects } = await supabase.from('projects').select('*');
+      const { data: services } = await supabase.from('services').select('*');
+      
+      if (settings && projects && services) {
+        setData({ settings, projects, services });
+      } else {
+        throw new Error("Failed to fetch from Supabase");
+      }
     } catch (err) {
       console.error("Fetch error:", err);
       if (retries > 0) {
@@ -1770,6 +1791,13 @@ export default function App() {
           ))}
         </div>
         <p className="text-[10px] uppercase font-black tracking-[0.3em] text-gray-500 mt-6">Loading Experience</p>
+        
+        <button 
+          onClick={() => fetchData()}
+          className="mt-12 px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white transition-all"
+        >
+          Retry Connection
+        </button>
       </div>
     </div>
   );
